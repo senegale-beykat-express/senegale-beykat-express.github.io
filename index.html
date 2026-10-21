@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Beykat Express</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#FBF8F1;--surface:#fff;--ink:#1A2238;--muted:#5B6275;--line:#E4DED0;--leaf:#1F7A4D;--leaf-ink:#fff;--mango:#F2A516;--err:#B3261E;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#10162A;--surface:#1A2240;--ink:#F3EFE4;--muted:#A9AFC4;--line:#2D375C;--leaf:#3DB77A;--leaf-ink:#08210F;--mango:#F2B43A;--err:#FF8A80;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "DM Sans",system-ui,sans-serif}
+h1,h2{font-family:"Bricolage Grotesque","DM Sans",system-ui,sans-serif;line-height:1.1;margin:0}
+.wrap{max-width:520px;margin:0 auto;padding:0 20px 40px}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+.logo{font:800 20px "Bricolage Grotesque",sans-serif}
+.hero h1{font-size:clamp(30px,8vw,44px);font-weight:800;letter-spacing:-.02em}
+.hero p{color:var(--muted);margin:12px 0 20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tab{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font:700 14px "DM Sans",sans-serif;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+form{display:grid;gap:10px}
+label{font-size:13px;font-weight:700;display:grid;gap:4px}
+input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:16px "DM Sans",sans-serif;width:100%}
+.btn{border:0;border-radius:10px;padding:13px 18px;font:700 15px "DM Sans",sans-serif;cursor:pointer;background:var(--leaf);color:var(--leaf-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:8px 14px}
+.btn:disabled{opacity:.6}
+.btn:focus-visible,input:focus-visible,select:focus-visible,.tab:focus-visible{outline:3px solid var(--mango);outline-offset:2px}
+.msg{min-height:20px;font-size:14px;margin-top:10px}.msg.err{color:var(--err)}.msg.ok{color:var(--leaf)}
+.tag{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;background:var(--mango);color:#1A2238;font-weight:700}
+.muted{color:var(--muted)}
+.hidden{display:none}
+.todo{margin:14px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><span class="logo">Beykat Express</span><button class="btn ghost hidden" id="out">Déconnexion</button></header>
+
+<section id="auth">
+<div class="hero"><h1>Du champ au marché, sans intermédiaire.</h1><p>Crée ton compte pour vendre, acheter ou transporter partout au Sénégal.</p></div>
+<div class="card">
+<div class="tabs" role="tablist"><button class="tab" data-m="in" aria-selected="true">Connexion</button><button class="tab" data-m="up" aria-selected="false">Inscription</button></div>
+<form id="f" novalidate>
+<label class="up hidden">Nom complet<input name="name" maxlength="80" autocomplete="name"></label>
+<label>Adresse e-mail<input name="email" type="email" required autocomplete="email" inputmode="email"></label>
+<label>Mot de passe (8 caractères minimum)<input name="pw" type="password" required minlength="8" autocomplete="current-password"></label>
+<label class="up hidden">Je suis<select name="role"><option value="seller">Vendeur (producteur, éleveur, pêcheur, commerçant)</option><option value="buyer">Acheteur (hôtel, restaurant, entreprise, famille)</option><option value="driver">Transporteur</option></select></label>
+<label class="up hidden">Région<select name="region" id="reg1"></select></label>
+<button class="btn" id="go">Se connecter</button>
+</form>
+<div class="msg" id="m" role="status" aria-live="polite"></div>
+</div>
+</section>
+
+<section id="home" class="hidden">
+<div class="card">
+<h2 id="hi" style="font-size:26px"></h2>
+<p><span class="tag" id="rl"></span></p>
+<form id="pf" novalidate style="margin-top:10px">
+<label>Nom complet<input name="name" maxlength="80"></label>
+<label>Région<select name="region" id="reg2"></select></label>
+<button class="btn">Enregistrer</button>
+</form>
+<div class="msg" id="pm" role="status" aria-live="polite"></div>
+<ul class="todo"><li>Bientôt : offres, commandes, messagerie et avis.</li></ul>
+</div>
+</section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+var sb = supabase.createClient("https://rhnzkxzlxftwxbyhrjiq.supabase.co", "sb_publishable_ub7RZ-egKXSKth0R-ZqmhA_WExDEy5h");
+var REG = ["Dakar","Thiès","Diourbel","Fatick","Kaolack","Kaffrine","Kédougou","Kolda","Louga","Matam","Saint-Louis","Sédhiou","Tambacounda","Ziguinchor"];
+var ROLES = {seller:"Vendeur", buyer:"Acheteur", driver:"Transporteur"};
+var $ = function(i){return document.getElementById(i)};
+var mode = "in";
+
+["reg1","reg2"].forEach(function(id){
+  REG.forEach(function(r){var o=document.createElement("option");o.value=r;o.textContent=r;$(id).appendChild(o)});
+});
+
+function say(el, text, cls){el.textContent = text || ""; el.className = "msg " + (cls || "")}
+
+function fr(e){
+  var m = String((e && e.message) || "");
+  if (/Invalid login/i.test(m)) return "E-mail ou mot de passe incorrect.";
+  if (/already registered|already been registered/i.test(m)) return "Cette adresse e-mail a déjà un compte.";
+  if (/at least|weak/i.test(m)) return "Mot de passe trop faible : utilise au moins 8 caractères.";
+  if (/rate limit|too many/i.test(m)) return "Trop d’essais. Réessaie dans quelques minutes.";
+  if (/valid email|invalid email/i.test(m)) return "Adresse e-mail invalide.";
+  if (/network|fetch/i.test(m)) return "Problème de connexion. Vérifie ton réseau.";
+  return "Une erreur est survenue. Réessaie.";
+}
+
+document.querySelectorAll(".tab").forEach(function(t){
+  t.onclick = function(){
+    mode = t.dataset.m;
+    document.querySelectorAll(".tab").forEach(function(b){b.setAttribute("aria-selected", b === t)});
+    document.querySelectorAll(".up").forEach(function(e){e.classList.toggle("hidden", mode !== "up")});
+    $("go").textContent = mode === "up" ? "Créer mon compte" : "Se connecter";
+    $("f").pw.autocomplete = mode === "up" ? "new-password" : "current-password";
+    say($("m"), "");
+  };
+});
+
+$("f").addEventListener("submit", async function(e){
+  e.preventDefault();
+  var f = e.target, email = f.email.value.trim(), pw = f.pw.value;
+  if (!email || pw.length < 8) { say($("m"), "Entre un e-mail et un mot de passe de 8 caractères minimum.", "err"); return; }
+  $("go").disabled = true; say($("m"), "Un instant…");
+  try {
+    if (mode === "up") {
+      var name = f.name.value.trim().slice(0, 80);
+      if (!name) { say($("m"), "Entre ton nom.", "err"); return; }
+      var r = await sb.auth.signUp({email: email, password: pw, options: {data: {full_name: name, role: f.role.value}}});
+      if (r.error) throw r.error;
+      if (r.data.session) {
+        await sb.from("profiles").update({region: f.region.value}).eq("id", r.data.user.id);
+      } else {
+        say($("m"), "Compte créé. Vérifie ta boîte e-mail pour confirmer, puis connecte-toi.", "ok"); return;
+      }
+    } else {
+      var r2 = await sb.auth.signInWithPassword({email: email, password: pw});
+      if (r2.error) throw r2.error;
+    }
+    f.pw.value = "";
+    say($("m"), "");
+    await show();
+  } catch (err) { say($("m"), fr(err), "err"); }
+  finally { $("go").disabled = false; }
+});
+
+async function show(){
+  var s = await sb.auth.getSession();
+  var ses = s.data.session;
+  $("auth").classList.toggle("hidden", !!ses);
+  $("home").classList.toggle("hidden", !ses);
+  $("out").classList.toggle("hidden", !ses);
+  if (!ses) return;
+  var p = await sb.from("profiles").select("full_name,role,region,status").eq("id", ses.user.id).single();
+  if (p.error || !p.data) { say($("pm"), "Profil introuvable. Déconnecte-toi puis reconnecte-toi.", "err"); return; }
+  if (p.data.status === "blocked") {
+    await sb.auth.signOut(); await show();
+    say($("m"), "Ce compte est suspendu. Contacte le support.", "err"); return;
+  }
+  $("hi").textContent = "Bonjour " + (p.data.full_name || "");
+  $("rl").textContent = ROLES[p.data.role] || "";
+  $("pf").name.value = p.data.full_name || "";
+  if (p.data.region) $("reg2").value = p.data.region;
+}
+
+$("pf").addEventListener("submit", async function(e){
+  e.preventDefault();
+  var s = await sb.auth.getSession();
+  if (!s.data.session) return;
+  var name = e.target.name.value.trim().slice(0, 80);
+  var r = await sb.from("profiles").update({full_name: name, region: e.target.region.value}).eq("id", s.data.session.user.id);
+  if (r.error) say($("pm"), "Enregistrement impossible. Réessaie.", "err");
+  else { say($("pm"), "Profil enregistré.", "ok"); $("hi").textContent = "Bonjour " + name; }
+});
+
+$("out").onclick = async function(){ await sb.auth.signOut(); await show(); };
+show();
+</script>
+</body>
+</html>
