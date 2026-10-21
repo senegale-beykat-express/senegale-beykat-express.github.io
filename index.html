@@ -36,15 +36,42 @@ input,select{padding:11px;border-radius:9px;border:1.5px solid var(--line);backg
 .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .kpi{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.kpi div{flex:1;min-width:120px;border:1.5px dashed var(--line);border-radius:12px;padding:8px 10px}.kpi b{display:block;font:800 18px "Bricolage Grotesque",sans-serif}
 h3{font-size:18px;margin:14px 0 8px}
+header{gap:10px}.logo{flex:1}
+#drawer{position:fixed;top:0;left:0;bottom:0;width:78%;max-width:300px;background:var(--surface);border-right:1px solid var(--line);z-index:30;padding:calc(16px + env(safe-area-inset-top,0px)) 14px 16px;display:grid;align-content:start;gap:4px;overflow-y:auto}
+#ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:20}
+#drawer.hidden,#ov.hidden{display:none}
+.mi{text-align:left;padding:13px 12px;border-radius:10px;border:0;background:transparent;color:var(--ink);font:700 16px "DM Sans",sans-serif;cursor:pointer}
+.mi:hover,.mi:focus-visible{background:var(--bg);outline:2px solid var(--mango)}
+.mt{font:800 18px "Bricolage Grotesque",sans-serif;padding:4px 12px 10px}
+.step{display:grid;grid-template-columns:36px 1fr;gap:10px;align-items:start}
+.num{width:36px;height:36px;border-radius:50%;background:var(--leaf);color:var(--leaf-ink);display:grid;place-items:center;font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.chip{padding:6px 12px;border-radius:20px;border:1.5px solid var(--line);font-size:14px}
+.sec{padding:22px 0 4px}.sec h2{font-size:clamp(22px,6vw,30px);margin-bottom:12px}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header><span class="logo">Beykat Express</span><button class="btn ghost hidden" id="out">Déconnexion</button></header>
+<header><button class="btn ghost" id="mbtn" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="drawer">☰</button><span class="logo">Beykat Express</span><button class="btn ghost hidden" id="out">Déconnexion</button></header>
+<div id="ov" class="hidden"></div>
+<nav id="drawer" class="hidden" aria-label="Menu principal"></nav>
 
 <section id="auth">
-<div class="hero"><h1>Du champ au marché, sans intermédiaire.</h1><p>Crée ton compte pour vendre, acheter ou transporter partout au Sénégal.</p></div>
-<div class="card">
+<div class="hero"><h1>Du champ au marché, sans intermédiaire.</h1><p>Crée ton compte pour vendre, acheter ou transporter partout au Sénégal.</p>
+<div class="acts"><button class="btn" data-open="up">Créer mon compte</button><button class="btn ghost" data-open="in">Se connecter</button></div></div>
+<div class="sec" id="how"><h2>Comment ça marche</h2>
+<div class="card step"><span class="num">1</span><div><b>Le vendeur publie</b><div class="muted">Agriculteur, éleveur, pêcheur ou commerçant : produit, quantité, prix et lieu.</div></div></div>
+<div class="card step"><span class="num">2</span><div><b>L’acheteur commande</b><div class="muted">Le prix total, transport compris, est calculé automatiquement. Annulation possible avant l’expédition.</div></div></div>
+<div class="card step"><span class="num">3</span><div><b>La commande est suivie</b><div class="muted">Le vendeur confirme puis suit la commande jusqu’à la livraison. Le choix du transporteur arrive bientôt.</div></div></div>
+</div>
+<div class="sec" id="who"><h2>Pour qui ?</h2>
+<div class="card"><b>Vendeurs</b><div class="muted">Agriculteurs, éleveurs, pêcheurs, commerçants.</div></div>
+<div class="card"><b>Acheteurs</b><div class="muted">Hôtels, restaurants, entreprises, familles.</div></div>
+<div class="card"><b>Transporteurs</b><div class="muted">Camionnettes, voitures de bagages, location pour sorties et événements (bientôt).</div></div>
+</div>
+<div class="sec" id="zones"><h2>Partout au Sénégal</h2><div class="chips" id="zl"></div><p class="muted">14 régions, avec leurs départements et leurs communes.</p></div>
+<div class="sec" id="safe"><h2>Confiance et sécurité</h2><div class="card"><p class="muted" style="margin:0">Comptes protégés par mot de passe, prix recalculé par le serveur, aucun numéro de téléphone public, et un administrateur qui peut bloquer un compte qui ne respecte pas les règles.</p></div></div>
+<div class="sec" id="joint"><h2>Rejoins Beykat Express</h2></div>
+<div class="card" id="join">
 <div class="tabs" role="tablist"><button class="tab" data-m="in" aria-selected="true">Connexion</button><button class="tab" data-m="up" aria-selected="false">Inscription</button></div>
 <form id="f" novalidate>
 <label class="up hidden">Nom complet<input name="name" maxlength="80" autocomplete="name"></label>
@@ -198,7 +225,7 @@ async function show(){
   if (!ses) return;
   var p = await sb.from("profiles").select("*").eq("id", ses.user.id).single();
   if (recovering) return;
-  if (p.error || !p.data) { $("view").replaceChildren(h("p", {class: "msg err"}, "Profil introuvable. Déconnecte-toi puis reconnecte-toi.")); return; }
+  if (p.error || !p.data) { $("view").replaceChildren(h("p", {class: "msg err"}, "Profil introuvable (" + (p.error ? p.error.message : "aucune ligne") + "). Déconnecte-toi puis reconnecte-toi.")); return; }
   if (p.data.status === "blocked") { await sb.auth.signOut(); await show(); say($("m"), "Ce compte est suspendu. Contacte le support.", "err"); return; }
   ME = p.data;
   if (!SET) {
@@ -390,6 +417,31 @@ async function vAdmin(){
     if (r.error) say(cm, err(r.error), "err"); else { COM.push({region: d.region, department: d.department, name: d.name}); say(cm, "Commune ajoutée.", "ok"); }
   };
 }
+REG.forEach(function(r){ $("zl").append(h("span", {class: "chip"}, r)); });
+function closeM(){ $("drawer").classList.add("hidden"); $("ov").classList.add("hidden"); $("mbtn").setAttribute("aria-expanded", "false"); }
+function toTop(){ window.scrollTo({top: 0, behavior: "smooth"}); }
+function toId(id){ var e = $(id); if (e) e.scrollIntoView({behavior: "smooth"}); }
+function openAuth(m){ var t = document.querySelector('#auth .tab[data-m="' + m + '"]'); if (t) t.click(); toId("join"); }
+function openM(){
+  var d = $("drawer"), items = [];
+  function it(label, fn){ return h("button", {class: "mi", onclick: function(){ closeM(); fn(); }}, label); }
+  items.push(h("div", {class: "mt"}, "Menu"));
+  if (ME) {
+    items.push(it("Offres", function(){ toTop(); go("offers"); }));
+    if (ME.role === "seller") items.push(it("Vendre", function(){ toTop(); go("sell"); }));
+    items.push(it("Commandes", function(){ toTop(); go("orders"); }), it("Profil", function(){ toTop(); go("me"); }));
+    if (ME.is_admin) items.push(it("Administration", function(){ toTop(); go("admin"); }));
+    items.push(it("Déconnexion", function(){ $("out").click(); }));
+  } else {
+    items.push(it("Accueil", toTop), it("Comment ça marche", function(){ toId("how"); }), it("Pour qui ?", function(){ toId("who"); }), it("Régions", function(){ toId("zones"); }), it("Se connecter", function(){ openAuth("in"); }), it("Créer un compte", function(){ openAuth("up"); }));
+  }
+  d.replaceChildren.apply(d, items);
+  d.classList.remove("hidden"); $("ov").classList.remove("hidden"); $("mbtn").setAttribute("aria-expanded", "true");
+}
+$("mbtn").onclick = function(){ if ($("drawer").classList.contains("hidden")) openM(); else closeM(); };
+$("ov").onclick = closeM;
+document.addEventListener("keydown", function(e){ if (e.key === "Escape") closeM(); });
+document.querySelectorAll("[data-open]").forEach(function(b){ b.onclick = function(){ openAuth(b.dataset.open); }; });
 show();
 </script>
 </body>
