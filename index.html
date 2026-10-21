@@ -84,11 +84,12 @@ input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);backg
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
+var RECOVERY = /type=recovery/.test(location.hash);
 var sb = supabase.createClient("https://rhnzkxzlxftwxbyhrjiq.supabase.co", "sb_publishable_ub7RZ-egKXSKth0R-ZqmhA_WExDEy5h");
 var REG = ["Dakar","Thiès","Diourbel","Fatick","Kaolack","Kaffrine","Kédougou","Kolda","Louga","Matam","Saint-Louis","Sédhiou","Tambacounda","Ziguinchor"];
 var ROLES = {seller:"Vendeur", buyer:"Acheteur", driver:"Transporteur"};
 var $ = function(i){return document.getElementById(i)};
-var mode = "in", fails = 0, recovering = false;
+var mode = "in", fails = 0, recovering = RECOVERY;
 
 ["reg1","reg2"].forEach(function(id){
   REG.forEach(function(r){var o=document.createElement("option");o.value=r;o.textContent=r;$(id).appendChild(o)});
@@ -159,11 +160,13 @@ async function show(){
   }
   $("rec").classList.add("hidden");
   var s = await sb.auth.getSession();
+  if (recovering) { await show(); return; }
   var ses = s.data.session;
   $("auth").classList.toggle("hidden", !!ses);
   $("home").classList.toggle("hidden", !ses);
   $("out").classList.toggle("hidden", !ses);
   if (!ses) return;
+  if (recovering) return;
   var p = await sb.from("profiles").select("full_name,role,region,status").eq("id", ses.user.id).single();
   if (p.error || !p.data) { say($("pm"), "Profil introuvable. Déconnecte-toi puis reconnecte-toi.", "err"); return; }
   if (p.data.status === "blocked") {
@@ -182,7 +185,7 @@ $("pf").addEventListener("submit", async function(e){
   if (!s.data.session) return;
   var name = e.target.name.value.trim().slice(0, 80);
   var r = await sb.from("profiles").update({full_name: name, region: e.target.region.value}).eq("id", s.data.session.user.id);
-  if (r.error) say($("pm"), "Enregistrement impossible. Réessaie.", "err");
+  if (r.error) say($("pm"), "Enregistrement impossible : " + (r.error.message || "erreur") + ".", "err");
   else { say($("pm"), "Profil enregistré.", "ok"); $("hi").textContent = "Bonjour " + name; }
 });
 
