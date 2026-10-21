@@ -112,6 +112,8 @@ function fr(e){
   if (/rate limit|too many/i.test(m)) return "Trop d’essais. Réessaie dans quelques minutes.";
   if (/valid email|invalid email/i.test(m)) return "Adresse e-mail invalide.";
   if (/network|fetch/i.test(m)) return "Problème de connexion. Vérifie ton réseau.";
+  if (/different from the old/i.test(m)) return "Choisis un mot de passe différent de l’ancien.";
+  if (/session missing|expired|invalid/i.test(m)) return "Le lien a expiré ou a déjà servi. Retourne à la connexion et redemande un lien.";
   return "Une erreur est survenue. Réessaie.";
 }
 
@@ -144,6 +146,7 @@ $("f").addEventListener("submit", async function(e){
       if (r2.error) throw r2.error;
     }
     f.pw.value = ""; fails = 0; say($("m"), "");
+    recovering = false; history.replaceState(null, "", location.pathname);
     await show();
   } catch (er) {
     var t = fr(er);
@@ -172,7 +175,7 @@ $("rf").addEventListener("submit", async function(e){
   if (a.length < 8) { say($("rm"), "Le mot de passe doit contenir au moins 8 caractères.", "err"); return; }
   if (a !== b2) { say($("rm"), "Les deux mots de passe ne sont pas identiques.", "err"); return; }
   var r = await sb.auth.updateUser({password: a});
-  if (r.error) { say($("rm"), fr(r.error), "err"); return; }
+  if (r.error) { say($("rm"), fr(r.error) + " (" + err(r.error) + ")", "err"); return; }
   recovering = false; e.target.reset(); say($("rm"), "");
   history.replaceState(null, "", location.pathname);
   await show();
