@@ -324,8 +324,19 @@ async function vOrders(){
   var r = await sb.from("orders").select("*, listings(title,unit)").order("created_at", {ascending: false}).limit(50);
   if (r.error) { box.append(h("p", {class: "msg err"}, err(r.error))); return; }
   if (!r.data.length) { box.append(h("p", {class: "muted"}, "Aucune commande.")); return; }
+  var ids = [];
+  r.data.forEach(function(o){ var x = o.buyer_id === ME.id ? o.seller_id : (o.seller_id === ME.id ? o.buyer_id : null); o._other = x; if (x && ids.indexOf(x) < 0) ids.push(x); });
+  var pn = ids.length ? await sb.from("profiles").select("id,full_name").in("id", ids) : {data: []};
+  var ph = ids.length ? await sb.from("phones").select("user_id,phone").in("user_id", ids) : {data: []};
+  var NM = {}, PH = {};
+  (pn.data || []).forEach(function(x){ NM[x.id] = x.full_name; }); (ph.data || []).forEach(function(x){ PH[x.user_id] = x.phone; });
   r.data.forEach(function(o){
-    var m = h("div", {class: "msg"}), acts = h("div", {class: "acts"});
+    var m = h("div", {class: "msg"}), acts = h("div", {class: "acts"}), contact = null;
+    if (o._other) {
+      var live = ["confirmed", "in_transit", "delivered"].indexOf(o.status) >= 0;
+      var tel = live ? (PH[o._other] ? h("a", {href: "tel:" + PH[o._other].replace(/\s/g, "")}, PH[o._other]) : "non renseigné") : "visible après confirmation";
+      contact = h("div", {}, (o.buyer_id === ME.id ? "Vendeur" : "Acheteur") + " : " + (NM[o._other] || "—") + " · Tél. : ", tel);
+    }
     function act(label, fn, cls){ acts.append(h("button", {class: "btn " + (cls || "ghost"), onclick: async function(){ var x = await fn(); if (x.error) say(m, err(x.error), "err"); else vOrders(); }}, label)); }
     var setS = function(s){ return function(){ return sb.rpc("set_order_status", {p_order: o.id, p_status: s}); }; };
     if (o.buyer_id === ME.id && (o.status === "pending" || o.status === "confirmed")) act("Annuler ma commande", function(){ return sb.rpc("cancel_order", {p_order: o.id}); });
@@ -334,21 +345,29 @@ async function vOrders(){
       if (o.status === "confirmed") act("Marquer en route", setS("in_transit"), "warn");
       if (o.status === "in_transit") act("Marquer livrée", setS("delivered"), "warn");
     }
-    box.append(h("div", {class: "card"}, h("b", {}, ((o.listings && o.listings.title) || "Offre") + " × " + o.quantity), h("div", {class: "muted"}, (o.buyer_id === ME.id ? "Achat" : "Vente") + " · " + new Date(o.created_at).toLocaleDateString("fr-FR")),
+    box.append(h("div", {class: "card"}, h("b", {}, ((o.listings && o.listings.title) || "Offre") + " × " + o.quantity), h("div", {class: "muted"}, (o.buyer_id === ME.id ? "Achat" : "Vente") + " · " + new Date(o.created_at).toLocaleDateString("fr-FR")), contact,
       h("div", {}, "Produits " + fmt(o.subtotal) + (o.discount > 0 ? " − réduction " + fmt(o.discount) : "") + " + transport " + fmt(o.transport_fee)), h("b", {}, "Total " + fmt(o.total)), h("div", {}, h("span", {class: "tag"}, ST[o.status])), acts, m));
   });
 }
 
 /* Profil */
-function vMe(){
+async function vMe(){
+  var ph0 = await sb.from("phones").select("phone").eq("user_id", ME.id).maybeSingle();
   var m = h("div", {class: "msg"}), g = geo({region: ME.region, department: ME.department, commune: ME.commune});
-  var f = h("form", {novalidate: ""}, lab("Nom complet", h("input", {name: "fn", maxlength: "80", value: ME.full_name || ""})), g.els, h("button", {class: "btn"}, "Enregistrer"));
+  var f = h("form", {novalidate: ""}, lab("Nom complet", h("input", {name: "fn", maxlength: "80", value: ME.full_name || ""})), g.els,
+    lab("Téléphone (facultatif)", h("input", {name: "tel", type: "tel", maxlength: "20", placeholder: "+221 77 123 45 67", autocomplete: "tel", value: (ph0.data && ph0.data.phone) || ""})),
+    h("div", {class: "muted"}, "Ton numéro est visible seulement par l’autre personne d’une commande confirmée."),
+    h("button", {class: "btn"}, "Enregistrer"));
   V(h("div", {class: "card"}, f, m));
   f.onsubmit = async function(e){
-    e.preventDefault(); var x = f.elements;
+    e.preventDefault(); var x = f.elements, tel = x.tel.value.trim();
+    if (tel && !/^\+?[0-9 ]{8,16}$/.test(tel)) { say(m, "Numéro invalide. Exemple : +221 77 123 45 67", "err"); return; }
     var d = {full_name: x.fn.value.trim().slice(0, 80), region: x.region.value, department: x.department.value || null, commune: x.commune.value.trim() || null};
     var r = await sb.from("profiles").update(d).eq("id", ME.id);
-    if (r.error) say(m, "Enregistrement impossible : " + err(r.error), "err"); else { Object.assign(ME, d); $("hi").textContent = "Bonjour " + d.full_name; say(m, "Profil enregistré.", "ok"); }
+    if (r.error) { say(m, "Enregistrement impossible : " + err(r.error), "err"); return; }
+    Object.assign(ME, d); $("hi").textContent = "Bonjour " + d.full_name;
+    var pr = tel ? await sb.from("phones").upsert({user_id: ME.id, phone: tel}) : await sb.from("phones").delete().eq("user_id", ME.id);
+    if (pr.error) say(m, "Profil enregistré, mais le numéro n’a pas pu l’être : " + err(pr.error), "err"); else say(m, "Profil enregistré.", "ok");
   };
 }
 
