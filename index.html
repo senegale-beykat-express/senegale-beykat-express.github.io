@@ -31,6 +31,7 @@ input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);backg
 .tag{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;background:var(--mango);color:#1A2238;font-weight:700}
 .muted{color:var(--muted)}
 .hidden{display:none}
+.link{background:none;border:0;color:var(--ink);text-decoration:underline;font:inherit;cursor:pointer;padding:6px 0;justify-self:start}
 .todo{margin:14px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
 </style>
 </head>
@@ -49,6 +50,7 @@ input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);backg
 <label class="up hidden">Je suis<select name="role"><option value="seller">Vendeur (producteur, éleveur, pêcheur, commerçant)</option><option value="buyer">Acheteur (hôtel, restaurant, entreprise, famille)</option><option value="driver">Transporteur</option></select></label>
 <label class="up hidden">Région<select name="region" id="reg1"></select></label>
 <button class="btn" id="go">Se connecter</button>
+<button type="button" class="link" id="forgot">Mot de passe oublié ?</button>
 </form>
 <div class="msg" id="m" role="status" aria-live="polite"></div>
 </div>
@@ -67,6 +69,17 @@ input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);backg
 <ul class="todo"><li>Bientôt : offres, commandes, messagerie et avis.</li></ul>
 </div>
 </section>
+<section id="rec" class="hidden">
+<div class="card">
+<h2 style="font-size:24px;margin-bottom:10px">Nouveau mot de passe</h2>
+<form id="rf" novalidate>
+<label>Nouveau mot de passe (8 caractères minimum)<input name="pw" type="password" minlength="8" autocomplete="new-password"></label>
+<label>Confirme le mot de passe<input name="pw2" type="password" minlength="8" autocomplete="new-password"></label>
+<button class="btn">Changer le mot de passe</button>
+</form>
+<div class="msg" id="rm" role="status" aria-live="polite"></div>
+</div>
+</section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -75,7 +88,7 @@ var sb = supabase.createClient("https://rhnzkxzlxftwxbyhrjiq.supabase.co", "sb_p
 var REG = ["Dakar","Thiès","Diourbel","Fatick","Kaolack","Kaffrine","Kédougou","Kolda","Louga","Matam","Saint-Louis","Sédhiou","Tambacounda","Ziguinchor"];
 var ROLES = {seller:"Vendeur", buyer:"Acheteur", driver:"Transporteur"};
 var $ = function(i){return document.getElementById(i)};
-var mode = "in";
+var mode = "in", fails = 0, recovering = false;
 
 ["reg1","reg2"].forEach(function(id){
   REG.forEach(function(r){var o=document.createElement("option");o.value=r;o.textContent=r;$(id).appendChild(o)});
@@ -125,14 +138,26 @@ $("f").addEventListener("submit", async function(e){
       var r2 = await sb.auth.signInWithPassword({email: email, password: pw});
       if (r2.error) throw r2.error;
     }
-    f.pw.value = "";
+    f.pw.value = ""; fails = 0;
     say($("m"), "");
     await show();
-  } catch (err) { say($("m"), fr(err), "err"); }
+  } catch (err) {
+    var t = fr(err);
+    if (mode === "in" && /Invalid login/i.test(String((err && err.message) || ""))) {
+      fails++;
+      if (fails >= 4) t += " Tu as échoué 4 fois : appuie sur « Mot de passe oublié ? » pour recevoir un lien de réinitialisation.";
+    }
+    say($("m"), t, "err");
+  }
   finally { $("go").disabled = false; }
 });
 
 async function show(){
+  if (recovering) {
+    $("auth").classList.add("hidden"); $("home").classList.add("hidden"); $("out").classList.add("hidden");
+    $("rec").classList.remove("hidden"); return;
+  }
+  $("rec").classList.add("hidden");
   var s = await sb.auth.getSession();
   var ses = s.data.session;
   $("auth").classList.toggle("hidden", !!ses);
@@ -159,6 +184,33 @@ $("pf").addEventListener("submit", async function(e){
   var r = await sb.from("profiles").update({full_name: name, region: e.target.region.value}).eq("id", s.data.session.user.id);
   if (r.error) say($("pm"), "Enregistrement impossible. Réessaie.", "err");
   else { say($("pm"), "Profil enregistré.", "ok"); $("hi").textContent = "Bonjour " + name; }
+});
+
+$("forgot").onclick = async function(){
+  var email = $("f").email.value.trim();
+  if (!email) { say($("m"), "Entre d’abord ton adresse e-mail, puis appuie sur « Mot de passe oublié ? ».", "err"); return; }
+  var b = $("forgot"); b.disabled = true;
+  try {
+    await sb.auth.resetPasswordForEmail(email, {redirectTo: location.origin + location.pathname});
+    say($("m"), "Si un compte existe avec cette adresse, un e-mail avec un lien de réinitialisation vient d’être envoyé. Vérifie aussi tes courriers indésirables.", "ok");
+  } catch (err) { say($("m"), "Envoi impossible pour le moment. Réessaie dans quelques minutes.", "err"); }
+  setTimeout(function(){ b.disabled = false; }, 60000);
+};
+
+sb.auth.onAuthStateChange(function(ev){
+  if (ev === "PASSWORD_RECOVERY") { recovering = true; setTimeout(show, 0); }
+});
+
+$("rf").addEventListener("submit", async function(e){
+  e.preventDefault();
+  var a = e.target.pw.value, b2 = e.target.pw2.value;
+  if (a.length < 8) { say($("rm"), "Le mot de passe doit contenir au moins 8 caractères.", "err"); return; }
+  if (a !== b2) { say($("rm"), "Les deux mots de passe ne sont pas identiques.", "err"); return; }
+  var r = await sb.auth.updateUser({password: a});
+  if (r.error) { say($("rm"), fr(r.error), "err"); return; }
+  recovering = false; e.target.reset(); say($("rm"), "");
+  history.replaceState(null, "", location.pathname);
+  await show();
 });
 
 $("out").onclick = async function(){ await sb.auth.signOut(); await show(); };
