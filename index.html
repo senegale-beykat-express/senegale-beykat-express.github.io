@@ -9,30 +9,33 @@
 :root{--bg:#FBF8F1;--surface:#fff;--ink:#1A2238;--muted:#5B6275;--line:#E4DED0;--leaf:#1F7A4D;--leaf-ink:#fff;--mango:#F2A516;--err:#B3261E;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root{--bg:#10162A;--surface:#1A2240;--ink:#F3EFE4;--muted:#A9AFC4;--line:#2D375C;--leaf:#3DB77A;--leaf-ink:#08210F;--mango:#F2B43A;--err:#FF8A80;color-scheme:dark}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "DM Sans",system-ui,sans-serif}
-h1,h2{font-family:"Bricolage Grotesque","DM Sans",system-ui,sans-serif;line-height:1.1;margin:0}
-.wrap{max-width:520px;margin:0 auto;padding:0 20px 40px}
-header{display:flex;justify-content:space-between;align-items:center;padding:16px 0}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "DM Sans",system-ui,sans-serif}
+h1,h2,h3{font-family:"Bricolage Grotesque","DM Sans",system-ui,sans-serif;line-height:1.15;margin:0}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px 40px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
 .logo{font:800 20px "Bricolage Grotesque",sans-serif}
 .hero h1{font-size:clamp(30px,8vw,44px);font-weight:800;letter-spacing:-.02em}
 .hero p{color:var(--muted);margin:12px 0 20px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px}
-.tabs{display:flex;gap:6px;margin-bottom:14px}
-.tab{flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font:700 14px "DM Sans",sans-serif;cursor:pointer}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto}
+.tab{flex:1;min-width:84px;padding:10px 8px;border-radius:10px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font:700 14px "DM Sans",sans-serif;cursor:pointer}
 .tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 form{display:grid;gap:10px}
 label{font-size:13px;font-weight:700;display:grid;gap:4px}
-input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:16px "DM Sans",sans-serif;width:100%}
-.btn{border:0;border-radius:10px;padding:13px 18px;font:700 15px "DM Sans",sans-serif;cursor:pointer;background:var(--leaf);color:var(--leaf-ink)}
-.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:8px 14px}
+input,select{padding:11px;border-radius:9px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:16px "DM Sans",sans-serif;width:100%}
+.btn{border:0;border-radius:10px;padding:12px 16px;font:700 15px "DM Sans",sans-serif;cursor:pointer;background:var(--leaf);color:var(--leaf-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line);padding:9px 12px}
+.btn.warn{background:var(--mango);color:#1A2238}
 .btn:disabled{opacity:.6}
 .btn:focus-visible,input:focus-visible,select:focus-visible,.tab:focus-visible{outline:3px solid var(--mango);outline-offset:2px}
-.msg{min-height:20px;font-size:14px;margin-top:10px}.msg.err{color:var(--err)}.msg.ok{color:var(--leaf)}
+.msg{min-height:20px;font-size:14px;margin-top:8px}.msg.err{color:var(--err)}.msg.ok{color:var(--leaf)}
 .tag{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;background:var(--mango);color:#1A2238;font-weight:700}
-.muted{color:var(--muted)}
+.muted{color:var(--muted);font-size:14px}
 .hidden{display:none}
 .link{background:none;border:0;color:var(--ink);text-decoration:underline;font:inherit;cursor:pointer;padding:6px 0;justify-self:start}
-.todo{margin:14px 0 0;padding-left:18px;color:var(--muted);font-size:14px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.kpi{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.kpi div{flex:1;min-width:120px;border:1.5px dashed var(--line);border-radius:12px;padding:8px 10px}.kpi b{display:block;font:800 18px "Bricolage Grotesque",sans-serif}
+h3{font-size:18px;margin:14px 0 8px}
 </style>
 </head>
 <body>
@@ -56,21 +59,7 @@ input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);backg
 </div>
 </section>
 
-<section id="home" class="hidden">
-<div class="card">
-<h2 id="hi" style="font-size:26px"></h2>
-<p><span class="tag" id="rl"></span></p>
-<form id="pf" novalidate style="margin-top:10px">
-<label>Nom complet<input name="name" maxlength="80"></label>
-<label>Région<select name="region" id="reg2"></select></label>
-<button class="btn">Enregistrer</button>
-</form>
-<div class="msg" id="pm" role="status" aria-live="polite"></div>
-<ul class="todo"><li>Bientôt : offres, commandes, messagerie et avis.</li></ul>
-</div>
-</section>
-<section id="rec" class="hidden">
-<div class="card">
+<section id="rec" class="hidden"><div class="card">
 <h2 style="font-size:24px;margin-bottom:10px">Nouveau mot de passe</h2>
 <form id="rf" novalidate>
 <label>Nouveau mot de passe (8 caractères minimum)<input name="pw" type="password" minlength="8" autocomplete="new-password"></label>
@@ -78,7 +67,13 @@ input,select{padding:12px;border-radius:9px;border:1.5px solid var(--line);backg
 <button class="btn">Changer le mot de passe</button>
 </form>
 <div class="msg" id="rm" role="status" aria-live="polite"></div>
-</div>
+</div></section>
+
+<section id="home" class="hidden">
+<h2 id="hi" style="font-size:24px"></h2>
+<p style="margin:6px 0 12px"><span class="tag" id="rl"></span></p>
+<div class="tabs" id="nav" role="tablist"></div>
+<div id="view"></div>
 </section>
 </div>
 
@@ -88,14 +83,26 @@ var RECOVERY = /type=recovery/.test(location.hash);
 var sb = supabase.createClient("https://rhnzkxzlxftwxbyhrjiq.supabase.co", "sb_publishable_ub7RZ-egKXSKth0R-ZqmhA_WExDEy5h");
 var REG = ["Dakar","Thiès","Diourbel","Fatick","Kaolack","Kaffrine","Kédougou","Kolda","Louga","Matam","Saint-Louis","Sédhiou","Tambacounda","Ziguinchor"];
 var ROLES = {seller:"Vendeur", buyer:"Acheteur", driver:"Transporteur"};
+var ST = {pending:"En attente",confirmed:"Confirmée",in_transit:"En route",delivered:"Livrée",cancelled:"Annulée",rejected:"Refusée"};
 var $ = function(i){return document.getElementById(i)};
-var mode = "in", fails = 0, recovering = RECOVERY;
+var mode = "in", fails = 0, recovering = RECOVERY, ME = null, SET = null, DEP = [], COM = [], tab = "offers";
+var fmt = function(n){return Math.round(n || 0).toLocaleString("fr-FR") + " FCFA"};
 
-["reg1","reg2"].forEach(function(id){
-  REG.forEach(function(r){var o=document.createElement("option");o.value=r;o.textContent=r;$(id).appendChild(o)});
-});
+function h(t, a){
+  var e = document.createElement(t), k, c = Array.prototype.slice.call(arguments, 2);
+  for (k in (a || {})) { if (k === "class") e.className = a[k]; else if (k.slice(0, 2) === "on") e[k] = a[k]; else e.setAttribute(k, a[k]); }
+  c.flat(2).forEach(function(x){ if (x != null) e.append(x.nodeType ? x : document.createTextNode(String(x))); });
+  return e;
+}
+function say(el, text, cls){ el.textContent = text || ""; el.className = "msg " + (cls || ""); }
+var opt = function(x){ return h("option", {value: x}, x); };
+var lab = function(t, el){ return h("label", {}, t, el); };
+var sel = function(n, p){ return h("select", {name: n}, p.map(function(x){ return h("option", {value: x[0]}, x[1]); })); };
+var num = function(n){ return h("input", {name: n, type: "number", min: "1", step: "any", required: "", inputmode: "decimal"}); };
+function V(box){ $("view").replaceChildren(box); }
+function err(e){ return (e && e.message) || "Erreur"; }
 
-function say(el, text, cls){el.textContent = text || ""; el.className = "msg " + (cls || "")}
+REG.forEach(function(r){ $("reg1").append(opt(r)); });
 
 function fr(e){
   var m = String((e && e.message) || "");
@@ -108,13 +115,13 @@ function fr(e){
   return "Une erreur est survenue. Réessaie.";
 }
 
-document.querySelectorAll(".tab").forEach(function(t){
+/* ---------- Connexion / inscription ---------- */
+document.querySelectorAll("#auth .tab").forEach(function(t){
   t.onclick = function(){
     mode = t.dataset.m;
-    document.querySelectorAll(".tab").forEach(function(b){b.setAttribute("aria-selected", b === t)});
-    document.querySelectorAll(".up").forEach(function(e){e.classList.toggle("hidden", mode !== "up")});
+    document.querySelectorAll("#auth .tab").forEach(function(b){ b.setAttribute("aria-selected", b === t); });
+    document.querySelectorAll(".up").forEach(function(e){ e.classList.toggle("hidden", mode !== "up"); });
     $("go").textContent = mode === "up" ? "Créer mon compte" : "Se connecter";
-    $("f").pw.autocomplete = mode === "up" ? "new-password" : "current-password";
     say($("m"), "");
   };
 });
@@ -126,33 +133,53 @@ $("f").addEventListener("submit", async function(e){
   $("go").disabled = true; say($("m"), "Un instant…");
   try {
     if (mode === "up") {
-      var name = f.name.value.trim().slice(0, 80);
+      var name = f.elements.name.value.trim().slice(0, 80);
       if (!name) { say($("m"), "Entre ton nom.", "err"); return; }
       var r = await sb.auth.signUp({email: email, password: pw, options: {data: {full_name: name, role: f.role.value}}});
       if (r.error) throw r.error;
-      if (r.data.session) {
-        await sb.from("profiles").update({region: f.region.value}).eq("id", r.data.user.id);
-      } else {
-        say($("m"), "Compte créé. Vérifie ta boîte e-mail pour confirmer, puis connecte-toi.", "ok"); return;
-      }
+      if (r.data.session) { await sb.from("profiles").update({region: f.region.value}).eq("id", r.data.user.id); }
+      else { say($("m"), "Compte créé. Vérifie ta boîte e-mail pour confirmer, puis connecte-toi.", "ok"); return; }
     } else {
       var r2 = await sb.auth.signInWithPassword({email: email, password: pw});
       if (r2.error) throw r2.error;
     }
-    f.pw.value = ""; fails = 0;
-    say($("m"), "");
+    f.pw.value = ""; fails = 0; say($("m"), "");
     await show();
-  } catch (err) {
-    var t = fr(err);
-    if (mode === "in" && /Invalid login/i.test(String((err && err.message) || ""))) {
+  } catch (er) {
+    var t = fr(er);
+    if (mode === "in" && /Invalid login/i.test(String((er && er.message) || ""))) {
       fails++;
       if (fails >= 4) t += " Tu as échoué 4 fois : appuie sur « Mot de passe oublié ? » pour recevoir un lien de réinitialisation.";
     }
     say($("m"), t, "err");
-  }
-  finally { $("go").disabled = false; }
+  } finally { $("go").disabled = false; }
 });
 
+$("forgot").onclick = async function(){
+  var email = $("f").email.value.trim();
+  if (!email) { say($("m"), "Entre d’abord ton adresse e-mail, puis appuie sur « Mot de passe oublié ? ».", "err"); return; }
+  var b = $("forgot"); b.disabled = true;
+  try {
+    await sb.auth.resetPasswordForEmail(email, {redirectTo: location.origin + location.pathname});
+    say($("m"), "Si un compte existe avec cette adresse, un e-mail avec un lien de réinitialisation vient d’être envoyé. Vérifie aussi tes courriers indésirables.", "ok");
+  } catch (er) { say($("m"), "Envoi impossible pour le moment. Réessaie dans quelques minutes.", "err"); }
+  setTimeout(function(){ b.disabled = false; }, 60000);
+};
+sb.auth.onAuthStateChange(function(ev){ if (ev === "PASSWORD_RECOVERY") { recovering = true; setTimeout(show, 0); } });
+$("rf").addEventListener("submit", async function(e){
+  e.preventDefault();
+  var a = e.target.pw.value, b2 = e.target.pw2.value;
+  if (a.length < 8) { say($("rm"), "Le mot de passe doit contenir au moins 8 caractères.", "err"); return; }
+  if (a !== b2) { say($("rm"), "Les deux mots de passe ne sont pas identiques.", "err"); return; }
+  var r = await sb.auth.updateUser({password: a});
+  if (r.error) { say($("rm"), fr(r.error), "err"); return; }
+  recovering = false; e.target.reset(); say($("rm"), "");
+  history.replaceState(null, "", location.pathname);
+  await show();
+});
+$("out").onclick = async function(){ await sb.auth.signOut(); ME = null; SET = null; await show(); };
+
+/* ---------- Application ---------- */
 async function show(){
   if (recovering) {
     $("auth").classList.add("hidden"); $("home").classList.add("hidden"); $("out").classList.add("hidden");
@@ -166,57 +193,200 @@ async function show(){
   $("home").classList.toggle("hidden", !ses);
   $("out").classList.toggle("hidden", !ses);
   if (!ses) return;
+  var p = await sb.from("profiles").select("*").eq("id", ses.user.id).single();
   if (recovering) return;
-  var p = await sb.from("profiles").select("full_name,role,region,status").eq("id", ses.user.id).single();
-  if (p.error || !p.data) { say($("pm"), "Profil introuvable. Déconnecte-toi puis reconnecte-toi.", "err"); return; }
-  if (p.data.status === "blocked") {
-    await sb.auth.signOut(); await show();
-    say($("m"), "Ce compte est suspendu. Contacte le support.", "err"); return;
+  if (p.error || !p.data) { $("view").replaceChildren(h("p", {class: "msg err"}, "Profil introuvable. Déconnecte-toi puis reconnecte-toi.")); return; }
+  if (p.data.status === "blocked") { await sb.auth.signOut(); await show(); say($("m"), "Ce compte est suspendu. Contacte le support.", "err"); return; }
+  ME = p.data;
+  if (!SET) {
+    var x = await Promise.all([sb.from("settings").select("*").eq("id", 1).single(), sb.from("departments").select("*"), sb.from("communes").select("*").limit(1000)]);
+    SET = x[0].data || {transport_base: 2000, transport_per_unit: 15, sale_commission: .05, transport_commission: .1};
+    DEP = x[1].data || []; COM = x[2].data || [];
   }
-  $("hi").textContent = "Bonjour " + (p.data.full_name || "");
-  $("rl").textContent = ROLES[p.data.role] || "";
-  $("pf").name.value = p.data.full_name || "";
-  if (p.data.region) $("reg2").value = p.data.region;
+  $("hi").textContent = "Bonjour " + (ME.full_name || "");
+  $("rl").textContent = ROLES[ME.role] + (ME.is_admin ? " · Administrateur" : "");
+  var items = [["offers", "Offres"]];
+  if (ME.role === "seller") items.push(["sell", "Vendre"]);
+  items.push(["orders", "Commandes"], ["me", "Profil"]);
+  if (ME.is_admin) items.push(["admin", "Admin"]);
+  $("nav").replaceChildren.apply($("nav"), items.map(function(i){ return h("button", {class: "tab", role: "tab", "data-t": i[0], onclick: function(){ go(i[0]); }}, i[1]); }));
+  go(items.some(function(i){ return i[0] === tab; }) ? tab : "offers");
+}
+function go(t){
+  tab = t;
+  document.querySelectorAll("#nav .tab").forEach(function(b){ b.setAttribute("aria-selected", b.dataset.t === t); });
+  ({offers: vOffers, sell: vSell, orders: vOrders, me: vMe, admin: vAdmin})[t]();
 }
 
-$("pf").addEventListener("submit", async function(e){
-  e.preventDefault();
-  var s = await sb.auth.getSession();
-  if (!s.data.session) return;
-  var name = e.target.name.value.trim().slice(0, 80);
-  var r = await sb.from("profiles").update({full_name: name, region: e.target.region.value}).eq("id", s.data.session.user.id);
-  if (r.error) say($("pm"), "Enregistrement impossible : " + (r.error.message || "erreur") + ".", "err");
-  else { say($("pm"), "Profil enregistré.", "ok"); $("hi").textContent = "Bonjour " + name; }
-});
+/* Région > département > commune */
+function geo(v){
+  v = v || {};
+  var r = h("select", {name: "region"}, REG.map(opt)), d = h("select", {name: "department"}),
+      c = h("input", {name: "commune", maxlength: "60", list: "cl", autocomplete: "off"}), dl = h("datalist", {id: "cl"});
+  function fd(){ d.replaceChildren.apply(d, [h("option", {value: ""}, "Département")].concat(DEP.filter(function(x){ return x.region === r.value; }).map(function(x){ return opt(x.name); }))); }
+  function fc(){ dl.replaceChildren.apply(dl, COM.filter(function(x){ return x.region === r.value && x.department === d.value; }).map(function(x){ return h("option", {value: x.name}); })); }
+  r.onchange = function(){ fd(); fc(); }; d.onchange = fc;
+  if (v.region) r.value = v.region; fd(); if (v.department) d.value = v.department; fc(); c.value = v.commune || "";
+  return {els: [lab("Région", r), lab("Département", d), lab("Commune (écris ou choisis)", c), dl]};
+}
+var place = function(x){ return [x.commune, x.department, x.region].filter(Boolean).join(", "); };
 
-$("forgot").onclick = async function(){
-  var email = $("f").email.value.trim();
-  if (!email) { say($("m"), "Entre d’abord ton adresse e-mail, puis appuie sur « Mot de passe oublié ? ».", "err"); return; }
-  var b = $("forgot"); b.disabled = true;
-  try {
-    await sb.auth.resetPasswordForEmail(email, {redirectTo: location.origin + location.pathname});
-    say($("m"), "Si un compte existe avec cette adresse, un e-mail avec un lien de réinitialisation vient d’être envoyé. Vérifie aussi tes courriers indésirables.", "ok");
-  } catch (err) { say($("m"), "Envoi impossible pour le moment. Réessaie dans quelques minutes.", "err"); }
-  setTimeout(function(){ b.disabled = false; }, 60000);
-};
+/* Offres + commande avec prix automatique */
+async function vOffers(){
+  var box = h("div"), list = h("div"), fl = h("select", {}, [h("option", {value: ""}, "Toutes les régions")].concat(REG.map(opt)));
+  box.append(lab("Filtrer par région", fl), list); V(box);
+  async function load(){
+    list.replaceChildren(h("p", {class: "muted"}, "Chargement…"));
+    var q = sb.from("listings").select("*").eq("active", true).gt("quantity", 0).order("created_at", {ascending: false}).limit(50);
+    if (fl.value) q = q.eq("region", fl.value);
+    var r = await q;
+    if (r.error) { list.replaceChildren(h("p", {class: "msg err"}, err(r.error))); return; }
+    if (!r.data.length) { list.replaceChildren(h("p", {class: "muted"}, "Aucune offre pour le moment.")); return; }
+    list.replaceChildren.apply(list, r.data.map(card));
+  }
+  function card(l){
+    var q = h("input", {type: "number", min: "1", max: String(l.quantity), value: "1", step: "any", "aria-label": "Quantité"}),
+        pr = h("input", {placeholder: "Code promo (facultatif)", maxlength: "20"}), est = h("div", {class: "muted"}), m = h("div", {class: "msg"}), b = h("button", {class: "btn"}, "Commander");
+    function upd(){ var n = +q.value || 0, sub = n * l.unit_price, fee = SET.transport_base + n * SET.transport_per_unit; est.textContent = "Produits " + fmt(sub) + " + transport " + fmt(fee) + " = " + fmt(sub + fee) + " (le code promo est appliqué à la commande)"; }
+    q.oninput = upd; upd();
+    b.onclick = async function(){
+      if (l.seller_id === ME.id) { say(m, "C’est ta propre offre.", "err"); return; }
+      b.disabled = true;
+      var r = await sb.rpc("create_order", {p_listing: l.id, p_qty: +q.value, p_promo: pr.value.trim() || null});
+      b.disabled = false;
+      if (r.error) say(m, err(r.error), "err"); else { say(m, "Commande envoyée. Suis-la dans l’onglet Commandes.", "ok"); load(); }
+    };
+    return h("div", {class: "card"}, h("h3", {style: "margin-top:0"}, l.title), h("div", {class: "muted"}, fmt(l.unit_price) + " / " + l.unit + " · " + l.quantity + " " + l.unit + " disponibles"), h("div", {class: "muted"}, place(l)), h("div", {style: "display:grid;gap:8px;margin-top:10px"}, lab("Quantité (" + l.unit + ")", q), pr, est, b), m);
+  }
+  fl.onchange = load; load();
+}
 
-sb.auth.onAuthStateChange(function(ev){
-  if (ev === "PASSWORD_RECOVERY") { recovering = true; setTimeout(show, 0); }
-});
+/* Vendre */
+async function vSell(){
+  var box = h("div"), m = h("div", {class: "msg"}), mine = h("div");
+  var g = geo({region: ME.region, department: ME.department, commune: ME.commune});
+  var f = h("form", {novalidate: ""}, lab("Produit", h("input", {name: "ttl", maxlength: "80", required: ""})),
+    lab("Catégorie", sel("category", [["agriculture", "Agriculture"], ["elevage", "Élevage"], ["peche", "Pêche"], ["commerce", "Commerce"]])),
+    lab("Unité", sel("unit", [["kg", "kg"], ["tonne", "tonne"], ["piece", "pièce"], ["caisse", "caisse"], ["litre", "litre"]])),
+    lab("Quantité disponible", num("quantity")), lab("Prix par unité (FCFA)", num("unit_price")), g.els, h("button", {class: "btn"}, "Publier l’offre"));
+  box.append(h("div", {class: "card"}, f, m), h("h3", {}, "Mes offres"), mine); V(box);
+  f.onsubmit = async function(e){
+    e.preventDefault(); var x = f.elements;
+    var d = {title: x.ttl.value.trim(), category: x.category.value, unit: x.unit.value, quantity: +x.quantity.value, unit_price: +x.unit_price.value, region: x.region.value, department: x.department.value || null, commune: x.commune.value.trim() || null};
+    if (d.title.length < 2 || !(d.quantity > 0) || !(d.unit_price > 0)) { say(m, "Vérifie le produit, la quantité et le prix.", "err"); return; }
+    var r = await sb.from("listings").insert(d);
+    if (r.error) say(m, err(r.error), "err"); else { say(m, "Offre publiée.", "ok"); x.ttl.value = ""; loadMine(); }
+  };
+  async function loadMine(){
+    var r = await sb.from("listings").select("*").eq("seller_id", ME.id).order("created_at", {ascending: false});
+    if (r.error) { mine.replaceChildren(h("p", {class: "msg err"}, err(r.error))); return; }
+    mine.replaceChildren.apply(mine, r.data.length ? r.data.map(function(l){
+      return h("div", {class: "card"}, h("b", {}, l.title), h("div", {class: "muted"}, fmt(l.unit_price) + " / " + l.unit + " · reste " + l.quantity + " · " + (l.active ? "En ligne" : "Retirée")),
+        h("div", {class: "acts"}, h("button", {class: "btn ghost", onclick: async function(){ await sb.from("listings").update({active: !l.active}).eq("id", l.id); loadMine(); }}, l.active ? "Retirer" : "Remettre en ligne")));
+    }) : [h("p", {class: "muted"}, "Aucune offre.")]);
+  }
+  loadMine();
+}
 
-$("rf").addEventListener("submit", async function(e){
-  e.preventDefault();
-  var a = e.target.pw.value, b2 = e.target.pw2.value;
-  if (a.length < 8) { say($("rm"), "Le mot de passe doit contenir au moins 8 caractères.", "err"); return; }
-  if (a !== b2) { say($("rm"), "Les deux mots de passe ne sont pas identiques.", "err"); return; }
-  var r = await sb.auth.updateUser({password: a});
-  if (r.error) { say($("rm"), fr(r.error), "err"); return; }
-  recovering = false; e.target.reset(); say($("rm"), "");
-  history.replaceState(null, "", location.pathname);
-  await show();
-});
+/* Commandes : suivi, annulation */
+async function vOrders(){
+  var box = h("div"); V(box);
+  var r = await sb.from("orders").select("*, listings(title,unit)").order("created_at", {ascending: false}).limit(50);
+  if (r.error) { box.append(h("p", {class: "msg err"}, err(r.error))); return; }
+  if (!r.data.length) { box.append(h("p", {class: "muted"}, "Aucune commande.")); return; }
+  r.data.forEach(function(o){
+    var m = h("div", {class: "msg"}), acts = h("div", {class: "acts"});
+    function act(label, fn, cls){ acts.append(h("button", {class: "btn " + (cls || "ghost"), onclick: async function(){ var x = await fn(); if (x.error) say(m, err(x.error), "err"); else vOrders(); }}, label)); }
+    var setS = function(s){ return function(){ return sb.rpc("set_order_status", {p_order: o.id, p_status: s}); }; };
+    if (o.buyer_id === ME.id && (o.status === "pending" || o.status === "confirmed")) act("Annuler ma commande", function(){ return sb.rpc("cancel_order", {p_order: o.id}); });
+    if (o.seller_id === ME.id || ME.is_admin) {
+      if (o.status === "pending") { act("Confirmer", setS("confirmed"), "warn"); act("Refuser", setS("rejected")); }
+      if (o.status === "confirmed") act("Marquer en route", setS("in_transit"), "warn");
+      if (o.status === "in_transit") act("Marquer livrée", setS("delivered"), "warn");
+    }
+    box.append(h("div", {class: "card"}, h("b", {}, ((o.listings && o.listings.title) || "Offre") + " × " + o.quantity), h("div", {class: "muted"}, (o.buyer_id === ME.id ? "Achat" : "Vente") + " · " + new Date(o.created_at).toLocaleDateString("fr-FR")),
+      h("div", {}, "Produits " + fmt(o.subtotal) + (o.discount > 0 ? " − réduction " + fmt(o.discount) : "") + " + transport " + fmt(o.transport_fee)), h("b", {}, "Total " + fmt(o.total)), h("div", {}, h("span", {class: "tag"}, ST[o.status])), acts, m));
+  });
+}
 
-$("out").onclick = async function(){ await sb.auth.signOut(); await show(); };
+/* Profil */
+function vMe(){
+  var m = h("div", {class: "msg"}), g = geo({region: ME.region, department: ME.department, commune: ME.commune});
+  var f = h("form", {novalidate: ""}, lab("Nom complet", h("input", {name: "fn", maxlength: "80", value: ME.full_name || ""})), g.els, h("button", {class: "btn"}, "Enregistrer"));
+  V(h("div", {class: "card"}, f, m));
+  f.onsubmit = async function(e){
+    e.preventDefault(); var x = f.elements;
+    var d = {full_name: x.fn.value.trim().slice(0, 80), region: x.region.value, department: x.department.value || null, commune: x.commune.value.trim() || null};
+    var r = await sb.from("profiles").update(d).eq("id", ME.id);
+    if (r.error) say(m, "Enregistrement impossible : " + err(r.error), "err"); else { Object.assign(ME, d); $("hi").textContent = "Bonjour " + d.full_name; say(m, "Profil enregistré.", "ok"); }
+  };
+}
+
+/* Espace administrateur */
+async function vAdmin(){
+  var box = h("div"); V(box);
+  var o = await sb.from("orders").select("total,platform_commission,status");
+  var ok = (o.data || []).filter(function(x){ return x.status !== "cancelled" && x.status !== "rejected"; });
+  var sales = ok.reduce(function(a, x){ return a + Number(x.total); }, 0), com = ok.reduce(function(a, x){ return a + Number(x.platform_commission); }, 0);
+  box.append(h("div", {class: "kpi"}, h("div", {}, h("span", {class: "muted"}, "Commandes"), h("b", {}, ok.length)), h("div", {}, h("span", {class: "muted"}, "Ventes"), h("b", {}, fmt(sales))), h("div", {}, h("span", {class: "muted"}, "Commissions"), h("b", {}, fmt(com)))));
+
+  /* Clients */
+  var users = h("div"); box.append(h("h3", {}, "Clients"), users);
+  async function loadU(){
+    var r = await sb.from("profiles").select("id,full_name,role,region,status,is_admin").order("created_at", {ascending: false}).limit(100);
+    if (r.error) { users.replaceChildren(h("p", {class: "msg err"}, err(r.error))); return; }
+    users.replaceChildren.apply(users, r.data.map(function(u){
+      var b = u.is_admin ? null : h("button", {class: "btn " + (u.status === "blocked" ? "warn" : "ghost"), onclick: async function(){ var x = await sb.rpc("admin_set_status", {p_user: u.id, p_status: u.status === "blocked" ? "active" : "blocked"}); if (x.error) alert(err(x.error)); loadU(); }}, u.status === "blocked" ? "Débloquer" : "Bloquer");
+      return h("div", {class: "card"}, h("b", {}, u.full_name || "(sans nom)"), h("div", {class: "muted"}, ROLES[u.role] + " · " + (u.region || "—") + " · " + (u.status === "blocked" ? "BLOQUÉ" : "actif") + (u.is_admin ? " · admin" : "")), b ? h("div", {class: "acts"}, b) : null);
+    }));
+  }
+  loadU();
+
+  /* Promotions */
+  var pm = h("div", {class: "msg"}), pl = h("div");
+  var pf = h("form", {novalidate: ""}, lab("Code promo (lettres et chiffres)", h("input", {name: "code", maxlength: "20"})), lab("Réduction en %", num("pct")), h("button", {class: "btn"}, "Créer la promotion"));
+  box.append(h("h3", {}, "Promotions"), h("div", {class: "card"}, pf, pm), pl);
+  async function loadP(){
+    var r = await sb.from("promos").select("*").order("code");
+    pl.replaceChildren.apply(pl, (r.data || []).map(function(p){
+      return h("div", {class: "card"}, h("b", {}, p.code + " : −" + p.percent + " %"), h("span", {class: "muted"}, p.active ? " · active" : " · désactivée"),
+        h("div", {class: "acts"}, h("button", {class: "btn ghost", onclick: async function(){ await sb.from("promos").update({active: !p.active}).eq("code", p.code); loadP(); }}, p.active ? "Désactiver" : "Activer"), h("button", {class: "btn ghost", onclick: async function(){ await sb.from("promos").delete().eq("code", p.code); loadP(); }}, "Supprimer")));
+    }));
+  }
+  pf.onsubmit = async function(e){
+    e.preventDefault(); var code = pf.elements.code.value.trim().toUpperCase(), pct = +pf.elements.pct.value;
+    if (!/^[A-Z0-9]{3,20}$/.test(code) || !(pct >= 1 && pct <= 90)) { say(pm, "Code de 3 à 20 lettres ou chiffres, réduction de 1 à 90 %.", "err"); return; }
+    var r = await sb.from("promos").insert({code: code, percent: pct});
+    if (r.error) say(pm, err(r.error), "err"); else { say(pm, "Promotion créée.", "ok"); pf.reset(); loadP(); }
+  };
+  loadP();
+
+  /* Tarifs et commissions */
+  var sm = h("div", {class: "msg"});
+  var sf = h("form", {novalidate: ""},
+    lab("Commission sur les ventes (%)", h("input", {name: "a", type: "number", step: "any", min: "0", max: "50", value: String(+(SET.sale_commission * 100).toFixed(2))})),
+    lab("Commission sur le transport (%)", h("input", {name: "b", type: "number", step: "any", min: "0", max: "50", value: String(+(SET.transport_commission * 100).toFixed(2))})),
+    lab("Transport : prix de base (FCFA)", h("input", {name: "c", type: "number", step: "any", min: "0", value: String(SET.transport_base)})),
+    lab("Transport : prix par unité (FCFA)", h("input", {name: "d", type: "number", step: "any", min: "0", value: String(SET.transport_per_unit)})), h("button", {class: "btn"}, "Enregistrer les tarifs"));
+  box.append(h("h3", {}, "Tarifs et commissions"), h("div", {class: "card"}, sf, sm));
+  sf.onsubmit = async function(e){
+    e.preventDefault(); var x = sf.elements;
+    var d = {sale_commission: +x.a.value / 100, transport_commission: +x.b.value / 100, transport_base: +x.c.value, transport_per_unit: +x.d.value};
+    var r = await sb.from("settings").update(d).eq("id", 1);
+    if (r.error) say(sm, err(r.error), "err"); else { Object.assign(SET, d); say(sm, "Tarifs enregistrés.", "ok"); }
+  };
+
+  /* Ajouter une commune */
+  var cm = h("div", {class: "msg"}), g = geo({});
+  var cf = h("form", {novalidate: ""}, g.els, h("button", {class: "btn"}, "Ajouter la commune"));
+  box.append(h("h3", {}, "Ajouter une commune"), h("div", {class: "card"}, cf, cm));
+  cf.onsubmit = async function(e){
+    e.preventDefault(); var x = cf.elements, d = {region: x.region.value, department: x.department.value, name: x.commune.value.trim()};
+    if (!d.department || !d.name) { say(cm, "Choisis le département et écris la commune.", "err"); return; }
+    var r = await sb.from("communes").insert(d);
+    if (r.error) say(cm, err(r.error), "err"); else { COM.push({region: d.region, department: d.department, name: d.name}); say(cm, "Commune ajoutée.", "ok"); }
+  };
+}
 show();
 </script>
 </body>
