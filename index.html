@@ -326,18 +326,29 @@ async function vSell(){
 /* Discussion liée à une commande */
 var CHAT_T = null, CUR = null;
 function stopChat(){ if (CHAT_T) clearInterval(CHAT_T); CHAT_T = null; if (CUR) CUR.replaceChildren(); CUR = null; }
+function voiceBub(x){
+  var holder = h("div"), btn = h("button", {class: "btn ghost"}, "▶ Écouter le message vocal");
+  btn.onclick = async function(){
+    btn.disabled = true;
+    var u = await sb.storage.from("voice").createSignedUrl(x.audio_path, 3600);
+    if (u.error) { btn.disabled = false; btn.textContent = "Lecture impossible"; return; }
+    var a = h("audio", {controls: "", src: u.data.signedUrl, preload: "auto"}); holder.replaceChildren(a); a.play().catch(function(){});
+  };
+  holder.append(btn); return holder;
+}
 function chatUI(o){
   var list = h("div", {class: "chat", "aria-live": "polite"}), inp = h("input", {maxlength: "1000", placeholder: "Écris ton message…", "aria-label": "Message", autocomplete: "off"}),
-      b = h("button", {class: "btn"}, "Envoyer"), m = h("div", {class: "msg"}), last = null;
-  var box = h("div", {class: "chatbox"}, list, h("div", {class: "cr"}, inp, b), m,
+      b = h("button", {class: "btn"}, "Envoyer"), mic = h("button", {class: "btn ghost", "aria-label": "Enregistrer un message vocal"}, "🎤"),
+      cx = h("button", {class: "btn ghost hidden", "aria-label": "Annuler l’enregistrement"}, "✖"), m = h("div", {class: "msg"}), last = null;
+  var box = h("div", {class: "chatbox"}, list, h("div", {class: "cr"}, inp, mic, cx, b), m,
     h("div", {class: "muted"}, "Pour ta sécurité : ne partage jamais de mot de passe ni de code reçu par SMS, et paie seulement via la plateforme."));
   async function load(){
-    var r = await sb.from("messages").select("id,sender_id,body,created_at").eq("order_id", o.id).order("created_at", {ascending: true}).limit(200);
+    var r = await sb.from("messages").select("id,sender_id,body,audio_path,created_at").eq("order_id", o.id).order("created_at", {ascending: true}).limit(200);
     if (r.error) { say(m, err(r.error), "err"); return; }
     var sig = r.data.map(function(x){ return x.id; }).join(",");
     if (sig === last) return; last = sig;
     list.replaceChildren.apply(list, r.data.length ? r.data.map(function(x){
-      return h("div", {class: "bub" + (x.sender_id === ME.id ? " me" : "")}, h("div", {}, x.body), h("small", {}, new Date(x.created_at).toLocaleString("fr-FR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"})));
+      return h("div", {class: "bub" + (x.sender_id === ME.id ? " me" : "")}, x.audio_path ? voiceBub(x) : h("div", {}, x.body), h("small", {}, new Date(x.created_at).toLocaleString("fr-FR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"})));
     }) : [h("p", {class: "muted"}, "Aucun message. Écris le premier.")]);
     list.scrollTop = list.scrollHeight;
   }
@@ -348,6 +359,36 @@ function chatUI(o){
     b.disabled = false;
     if (r.error) say(m, err(r.error), "err"); else { inp.value = ""; say(m, ""); load(); }
   }
+  async function sendVoice(blob){
+    if (blob.size > 2000000) { say(m, "Message trop long. Reste sous 1 minute.", "err"); return; }
+    var base = (blob.type || "audio/webm").split(";")[0], ext = base.indexOf("mp4") >= 0 ? "m4a" : (base.indexOf("ogg") >= 0 ? "ogg" : "webm");
+    var path = o.id + "/" + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.floor(Math.random() * 1e6)) + "." + ext;
+    say(m, "Envoi du message vocal…");
+    var up = await sb.storage.from("voice").upload(path, blob, {contentType: base});
+    if (up.error) { say(m, "Envoi impossible : " + err(up.error), "err"); return; }
+    var r = await sb.from("messages").insert({order_id: o.id, body: "Message vocal", audio_path: path});
+    if (r.error) say(m, err(r.error), "err"); else { say(m, ""); load(); }
+  }
+  var rec = null, chunks = [], tm = null, t0 = 0, cancelled = false;
+  async function startRec(){
+    if (!navigator.mediaDevices || !window.MediaRecorder) { say(m, "Ton navigateur ne permet pas l’enregistrement vocal.", "err"); return; }
+    var st;
+    try { st = await navigator.mediaDevices.getUserMedia({audio: true}); } catch (e) { say(m, "Autorise le micro pour envoyer un message vocal.", "err"); return; }
+    chunks = []; cancelled = false; rec = new MediaRecorder(st);
+    rec.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = function(){
+      st.getTracks().forEach(function(t){ t.stop(); }); clearInterval(tm); mic.textContent = "🎤"; cx.classList.add("hidden");
+      if (!cancelled && chunks.length) sendVoice(new Blob(chunks, {type: rec.mimeType || "audio/webm"}));
+    };
+    rec.start(); t0 = Date.now(); mic.textContent = "⏹ 0:00"; cx.classList.remove("hidden");
+    tm = setInterval(function(){
+      var sec = Math.floor((Date.now() - t0) / 1000);
+      mic.textContent = "⏹ " + Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+      if (sec >= 60 && rec.state === "recording") rec.stop();
+    }, 500);
+  }
+  mic.onclick = function(){ if (rec && rec.state === "recording") rec.stop(); else startRec(); };
+  cx.onclick = function(){ cancelled = true; if (rec && rec.state === "recording") rec.stop(); };
   b.onclick = send; inp.onkeydown = function(e){ if (e.key === "Enter") send(); };
   load();
   return {el: box, load: load};
