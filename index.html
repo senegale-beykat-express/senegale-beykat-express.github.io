@@ -51,8 +51,11 @@ header{gap:10px}.logo{flex:1}
 .chat{max-height:260px;overflow-y:auto;display:grid;gap:6px;margin-bottom:8px}
 .bub{padding:8px 12px;border-radius:12px;background:var(--bg);max-width:85%;justify-self:start;word-break:break-word}
 .bub.me{background:var(--leaf);color:var(--leaf-ink);justify-self:end}
+.bub audio{width:100%;max-width:240px}
 .bub small{display:block;opacity:.7;font-size:11px;margin-top:2px}
+.bub{min-width:0;overflow:hidden}.bub audio{display:block;width:100%;max-width:240px}.bub .btn{max-width:100%}
 .cr{display:flex;gap:8px}.cr input{flex:1}
+.bub audio{width:100%;max-width:240px}
 </style>
 </head>
 <body>
@@ -65,6 +68,7 @@ header{gap:10px}.logo{flex:1}
 <div class="hero"><h1>Du champ au marché, sans intermédiaire.</h1><p>Crée ton compte pour vendre, acheter ou transporter partout au Sénégal.</p>
 <div class="acts"><button class="btn" data-open="up">Créer mon compte</button><button class="btn ghost" data-open="in">Se connecter</button><a class="btn ghost" href="#offers" style="text-decoration:none">Voir les offres</a></div></div>
 <div class="sec" id="offers"><h2>Offres du moment</h2><p class="muted" style="margin:0 0 10px">Parcours librement. Un compte est demandé seulement pour commander.</p><div id="pubo"></div></div>
+<div class="sec" id="vehs"><h2>Véhicules à louer</h2><p class="muted" style="margin:0 0 10px">Minibus, cars, camionnettes et voitures de bagages pour tes sorties et tes événements.</p><div id="pubv"></div></div>
 <div class="sec" id="how"><h2>Comment ça marche</h2>
 <div class="card step"><span class="num">1</span><div><b>Le vendeur publie</b><div class="muted">Agriculteur, éleveur, pêcheur ou commerçant : produit, quantité, prix et lieu.</div></div></div>
 <div class="card step"><span class="num">2</span><div><b>L’acheteur commande</b><div class="muted">Le prix total, transport compris, est calculé automatiquement. Annulation possible avant l’expédition.</div></div></div>
@@ -238,9 +242,9 @@ async function show(){
   await loadRef();
   $("hi").textContent = "Bonjour " + (ME.full_name || "");
   $("rl").textContent = ROLES[ME.role] + (ME.is_admin ? " · Administrateur" : "");
-  var items = [["offers", "Offres"]];
+  var items = [["offers", "Offres"], ["veh", "Véhicules"]];
   if (ME.role === "seller") items.push(["sell", "Vendre"]);
-  items.push(["orders", "Commandes"], ["me", "Profil"]);
+  items.push(["orders", "Commandes"], ["locs", "Locations"], ["me", "Profil"]);
   if (ME.is_admin) items.push(["admin", "Admin"]);
   $("nav").replaceChildren.apply($("nav"), items.map(function(i){ return h("button", {class: "tab", role: "tab", "data-t": i[0], onclick: function(){ go(i[0]); }}, i[1]); }));
   go(items.some(function(i){ return i[0] === tab; }) ? tab : "offers");
@@ -248,7 +252,7 @@ async function show(){
 function go(t){
   stopChat(); tab = t;
   document.querySelectorAll("#nav .tab").forEach(function(b){ b.setAttribute("aria-selected", b.dataset.t === t); });
-  ({offers: vOffers, sell: vSell, orders: vOrders, me: vMe, admin: vAdmin})[t]();
+  ({offers: vOffers, veh: vVeh, sell: vSell, orders: vOrders, locs: vLocs, me: vMe, admin: vAdmin})[t]();
 }
 
 /* Région > département > commune */
@@ -435,6 +439,132 @@ async function vOrders(){
   });
 }
 
+/* Véhicules et locations */
+var KIND = {minibus: "Minibus", ndiaga: "Ndiaga Ndiaye", car_rapide: "Car Rapide", camionnette: "Camionnette", bagages: "Voiture de bagages", voiture: "Voiture"};
+var PURP = {evenement: "Événement", sortie: "Sortie", bagages: "Transport de bagages", autre: "Autre"};
+var LST = {pending: "En attente", accepted: "Acceptée", refused: "Refusée", cancelled: "Annulée", completed: "Terminée"};
+var TODAY = new Date().toISOString().slice(0, 10);
+var VCOLS = "id,kind,title,seats,price_per_day,with_driver,region,department,commune,created_at";
+var nDays = function(a, b){ return Math.round((new Date(b) - new Date(a)) / 864e5) + 1; };
+var pairs = function(o){ return Object.keys(o).map(function(k){ return [k, o[k]]; }); };
+var vInfo = function(v){ return (KIND[v.kind] || v.kind) + (v.seats ? " · " + v.seats + " places" : "") + (v.with_driver ? " · avec chauffeur" : " · sans chauffeur"); };
+
+async function guestVeh(){
+  var box = $("pubv"); if (!box) return;
+  var r = await sb.from("vehicles").select(VCOLS).eq("active", true).eq("verified", true).order("created_at", {ascending: false}).limit(30);
+  if (r.error || !r.data.length) { box.replaceChildren(h("p", {class: "muted"}, r.error ? "Les véhicules ne peuvent pas être affichés pour le moment." : "Aucun véhicule pour le moment.")); return; }
+  box.replaceChildren.apply(box, r.data.map(function(v){
+    return h("div", {class: "card"}, h("b", {}, v.title), h("div", {class: "muted"}, vInfo(v)), h("div", {class: "muted"}, fmt(v.price_per_day) + " / jour · " + place(v)),
+      h("div", {class: "acts"}, h("button", {class: "btn", onclick: function(){ openAuth("up"); }}, "Demander la location")));
+  }));
+}
+
+function vehCard(v){
+  var d1 = h("input", {type: "date", min: TODAY, value: TODAY, "aria-label": "Début"}), d2 = h("input", {type: "date", min: TODAY, value: TODAY, "aria-label": "Fin"}),
+      pu = h("select", {}, pairs(PURP).map(function(p){ return h("option", {value: p[0]}, p[1]); })),
+      pk = h("input", {placeholder: "Lieu de départ", maxlength: "100"}), ds = h("input", {placeholder: "Destination", maxlength: "100"}),
+      est = h("div", {class: "muted"}), m = h("div", {class: "msg"}), b = h("button", {class: "btn"}, "Demander la location");
+  function upd(){ var n = nDays(d1.value, d2.value); est.textContent = n > 0 ? n + " jour(s) × " + fmt(v.price_per_day) + " = " + fmt(n * v.price_per_day) : "Dates invalides"; }
+  d1.onchange = upd; d2.onchange = upd; upd();
+  b.onclick = async function(){
+    b.disabled = true;
+    var r = await sb.rpc("request_rental", {p_vehicle: v.id, p_start: d1.value, p_end: d2.value, p_purpose: pu.value, p_pickup: pk.value.trim() || null, p_dest: ds.value.trim() || null});
+    b.disabled = false;
+    if (r.error) say(m, err(r.error), "err"); else say(m, "Demande envoyée. Suis-la dans l’onglet Locations.", "ok");
+  };
+  return h("div", {class: "card"}, h("h3", {style: "margin-top:0"}, v.title), h("div", {class: "muted"}, vInfo(v)), h("div", {class: "muted"}, fmt(v.price_per_day) + " / jour · " + place(v)),
+    h("div", {style: "display:grid;gap:8px;margin-top:10px"}, lab("Du", d1), lab("Au", d2), lab("Motif", pu), pk, ds, est, b), m);
+}
+
+async function vVeh(){
+  var box = h("div"), list = h("div");
+  var fr0 = h("select", {}, [h("option", {value: ""}, "Toutes les régions")].concat(REG.map(opt)));
+  var fk = h("select", {}, [h("option", {value: ""}, "Tous les types")].concat(pairs(KIND).map(function(p){ return h("option", {value: p[0]}, p[1]); })));
+  box.append(lab("Région", fr0), lab("Type de véhicule", fk), list);
+  if (ME.role === "driver") mineSection(box);
+  V(box);
+  async function load(){
+    list.replaceChildren(h("p", {class: "muted"}, "Chargement…"));
+    var q = sb.from("vehicles").select("*").eq("active", true).eq("verified", true).order("created_at", {ascending: false}).limit(50);
+    if (fr0.value) q = q.eq("region", fr0.value); if (fk.value) q = q.eq("kind", fk.value);
+    var r = await q;
+    if (r.error) { list.replaceChildren(h("p", {class: "msg err"}, err(r.error))); return; }
+    var rows = r.data.filter(function(v){ return v.owner_id !== ME.id; });
+    list.replaceChildren.apply(list, rows.length ? rows.map(vehCard) : [h("p", {class: "muted"}, "Aucun véhicule pour le moment.")]);
+  }
+  fr0.onchange = load; fk.onchange = load; load();
+}
+
+function mineSection(box){
+  var m = h("div", {class: "msg"}), mine = h("div"), g = geo({region: ME.region, department: ME.department, commune: ME.commune});
+  var f = h("form", {novalidate: ""}, lab("Type", sel("kind", pairs(KIND))), lab("Nom du véhicule", h("input", {name: "ttl", maxlength: "80", placeholder: "Ex : Minibus 30 places"})),
+    lab("Nombre de places (facultatif)", h("input", {name: "seats", type: "number", min: "1", max: "100"})), lab("Prix par jour (FCFA)", num("price")),
+    lab("Chauffeur", sel("drv", [["1", "Avec chauffeur"], ["0", "Sans chauffeur"]])), g.els, h("button", {class: "btn"}, "Publier le véhicule"));
+  box.append(h("h3", {}, "Mes véhicules"), h("div", {class: "card"}, h("div", {class: "muted"}, "Ton véhicule devient visible après vérification par l’administrateur."), f, m), mine);
+  f.onsubmit = async function(e){
+    e.preventDefault(); var x = f.elements;
+    var d = {kind: x.kind.value, title: x.ttl.value.trim(), seats: x.seats.value ? +x.seats.value : null, price_per_day: +x.price.value, with_driver: x.drv.value === "1", region: x.region.value, department: x.department.value || null, commune: x.commune.value.trim() || null};
+    if (d.title.length < 2 || !(d.price_per_day > 0)) { say(m, "Vérifie le nom et le prix.", "err"); return; }
+    var r = await sb.from("vehicles").insert(d);
+    if (r.error) say(m, err(r.error), "err"); else { say(m, "Véhicule envoyé. Il sera visible après vérification.", "ok"); x.ttl.value = ""; loadMine(); }
+  };
+  async function loadMine(){
+    var r = await sb.from("vehicles").select("*").eq("owner_id", ME.id).order("created_at", {ascending: false});
+    mine.replaceChildren.apply(mine, (r.data || []).map(function(v){
+      return h("div", {class: "card"}, h("b", {}, v.title), h("div", {class: "muted"}, vInfo(v) + " · " + fmt(v.price_per_day) + " / jour"),
+        h("div", {}, h("span", {class: "tag"}, v.verified ? "Vérifié" : "En attente de vérification"), v.active ? "" : " (masqué)"),
+        h("div", {class: "acts"}, h("button", {class: "btn ghost", onclick: async function(){ await sb.from("vehicles").update({active: !v.active}).eq("id", v.id); loadMine(); }}, v.active ? "Masquer" : "Afficher"),
+          h("button", {class: "btn ghost", onclick: async function(){ var x = await sb.from("vehicles").delete().eq("id", v.id); if (x.error) alert("Suppression impossible : une location existe pour ce véhicule. Masque-le plutôt."); loadMine(); }}, "Supprimer")));
+    }));
+  }
+  loadMine();
+}
+
+async function vLocs(){
+  stopChat(); var box = h("div"); V(box);
+  var r = await sb.from("rentals").select("*, vehicles(title,kind)").order("created_at", {ascending: false}).limit(50);
+  if (r.error) { box.append(h("p", {class: "msg err"}, err(r.error))); return; }
+  if (!r.data.length) { box.append(h("p", {class: "muted"}, "Aucune location.")); return; }
+  var ids = [];
+  r.data.forEach(function(o){ var x = o.renter_id === ME.id ? o.owner_id : (o.owner_id === ME.id ? o.renter_id : null); o._o = x; if (x && ids.indexOf(x) < 0) ids.push(x); });
+  var pn = ids.length ? await sb.from("profiles").select("id,full_name").in("id", ids) : {data: []};
+  var ph = ids.length ? await sb.from("phones").select("user_id,phone").in("user_id", ids) : {data: []};
+  var NM = {}, PH = {};
+  (pn.data || []).forEach(function(x){ NM[x.id] = x.full_name; }); (ph.data || []).forEach(function(x){ PH[x.user_id] = x.phone; });
+  r.data.forEach(function(o){
+    var m = h("div", {class: "msg"}), acts = h("div", {class: "acts"}), contact = null;
+    function act(label, fn, cls){ acts.append(h("button", {class: "btn " + (cls || "ghost"), onclick: async function(){ var x = await fn(); if (x.error) say(m, err(x.error), "err"); else vLocs(); }}, label)); }
+    var st = function(s2){ return function(){ return sb.rpc("set_rental_status", {p_id: o.id, p_status: s2}); }; };
+    if (o.renter_id === ME.id && (o.status === "pending" || o.status === "accepted")) act("Annuler", function(){ return sb.rpc("cancel_rental", {p_id: o.id}); });
+    if (o.owner_id === ME.id || ME.is_admin) {
+      if (o.status === "pending") { act("Accepter", st("accepted"), "warn"); act("Refuser", st("refused")); }
+      if (o.status === "accepted") act("Marquer terminée", st("completed"), "warn");
+    }
+    if (o._o) {
+      var live = o.status === "accepted" || o.status === "completed";
+      var tel = live ? (PH[o._o] ? h("a", {href: "tel:" + PH[o._o].replace(/\s/g, "")}, PH[o._o]) : "non renseigné") : "visible après acceptation";
+      contact = h("div", {}, (o.renter_id === ME.id ? "Propriétaire" : "Client") + " : " + (NM[o._o] || "—") + " · Tél. : ", tel);
+    }
+    box.append(h("div", {class: "card"}, h("b", {}, (o.vehicles && o.vehicles.title) || "Véhicule"), h("div", {class: "muted"}, (o.renter_id === ME.id ? "Ma demande" : "Demande reçue") + " · " + (PURP[o.purpose] || "")), contact,
+      h("div", {}, "Du " + o.start_date + " au " + o.end_date + " (" + o.days + " jour" + (o.days > 1 ? "s" : "") + ")"),
+      (o.pickup || o.destination) ? h("div", {class: "muted"}, (o.pickup || "?") + " → " + (o.destination || "?")) : null,
+      h("b", {}, "Total " + fmt(o.total)), h("div", {}, h("span", {class: "tag"}, LST[o.status])), acts, m));
+  });
+}
+
+async function adminVeh(box){
+  var wrap = h("div"); box.append(h("h3", {}, "Véhicules à vérifier"), wrap);
+  async function load(){
+    var r = await sb.from("vehicles").select("*").eq("verified", false).order("created_at", {ascending: false});
+    wrap.replaceChildren.apply(wrap, (r.data && r.data.length) ? r.data.map(function(v){
+      return h("div", {class: "card"}, h("b", {}, v.title), h("div", {class: "muted"}, vInfo(v) + " · " + fmt(v.price_per_day) + " / jour · " + place(v)),
+        h("div", {class: "acts"}, h("button", {class: "btn warn", onclick: async function(){ var x = await sb.rpc("admin_verify_vehicle", {p_id: v.id, p_ok: true}); if (x.error) alert(err(x.error)); load(); }}, "Vérifier"),
+          h("button", {class: "btn ghost", onclick: async function(){ await sb.from("vehicles").delete().eq("id", v.id); load(); }}, "Supprimer")));
+    }) : [h("p", {class: "muted"}, "Aucun véhicule en attente.")]);
+  }
+  load();
+}
+
 /* Profil */
 async function vMe(){
   var ph0 = await sb.from("phones").select("phone").eq("user_id", ME.id).maybeSingle();
@@ -510,6 +640,7 @@ async function vAdmin(){
     if (r.error) say(sm, err(r.error), "err"); else { Object.assign(SET, d); say(sm, "Tarifs enregistrés.", "ok"); }
   };
 
+  adminVeh(box);
   /* Ajouter une commune */
   var cm = h("div", {class: "msg"}), g = geo({});
   var cf = h("form", {novalidate: ""}, g.els, h("button", {class: "btn"}, "Ajouter la commune"));
@@ -527,7 +658,7 @@ async function loadRef(){
   SET = x[0].data || {transport_base: 2000, transport_per_unit: 15, sale_commission: .05, transport_commission: .1};
   DEP = x[1].data || []; COM = x[2].data || [];
 }
-function refreshPublic(){ if (!ME) $("pubo").replaceChildren(offersUI()); }
+function refreshPublic(){ if (!ME) { $("pubo").replaceChildren(offersUI()); guestVeh(); } }
 REG.forEach(function(r){ $("zl").append(h("span", {class: "chip"}, r)); });
 function closeM(){ $("drawer").classList.add("hidden"); $("ov").classList.add("hidden"); $("mbtn").setAttribute("aria-expanded", "false"); }
 function toTop(){ window.scrollTo({top: 0, behavior: "smooth"}); }
@@ -538,13 +669,13 @@ function openM(){
   function it(label, fn){ return h("button", {class: "mi", onclick: function(){ closeM(); fn(); }}, label); }
   items.push(h("div", {class: "mt"}, "Menu"));
   if (ME) {
-    items.push(it("Offres", function(){ toTop(); go("offers"); }));
+    items.push(it("Offres", function(){ toTop(); go("offers"); }), it("Véhicules", function(){ toTop(); go("veh"); }));
     if (ME.role === "seller") items.push(it("Vendre", function(){ toTop(); go("sell"); }));
-    items.push(it("Commandes", function(){ toTop(); go("orders"); }), it("Profil", function(){ toTop(); go("me"); }));
+    items.push(it("Commandes", function(){ toTop(); go("orders"); }), it("Locations", function(){ toTop(); go("locs"); }), it("Profil", function(){ toTop(); go("me"); }));
     if (ME.is_admin) items.push(it("Administration", function(){ toTop(); go("admin"); }));
     items.push(it("Déconnexion", function(){ $("out").click(); }));
   } else {
-    items.push(it("Accueil", toTop), it("Offres", function(){ toId("offers"); }), it("Comment ça marche", function(){ toId("how"); }), it("Pour qui ?", function(){ toId("who"); }), it("Régions", function(){ toId("zones"); }), it("Se connecter", function(){ openAuth("in"); }), it("Créer un compte", function(){ openAuth("up"); }));
+    items.push(it("Accueil", toTop), it("Offres", function(){ toId("offers"); }), it("Véhicules", function(){ toId("vehs"); }), it("Comment ça marche", function(){ toId("how"); }), it("Pour qui ?", function(){ toId("who"); }), it("Régions", function(){ toId("zones"); }), it("Se connecter", function(){ openAuth("in"); }), it("Créer un compte", function(){ openAuth("up"); }));
   }
   d.replaceChildren.apply(d, items);
   d.classList.remove("hidden"); $("ov").classList.remove("hidden"); $("mbtn").setAttribute("aria-expanded", "true");
