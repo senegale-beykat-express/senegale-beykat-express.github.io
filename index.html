@@ -57,7 +57,8 @@ header{gap:10px}.logo{flex:1}
 
 <section id="auth">
 <div class="hero"><h1>Du champ au marché, sans intermédiaire.</h1><p>Crée ton compte pour vendre, acheter ou transporter partout au Sénégal.</p>
-<div class="acts"><button class="btn" data-open="up">Créer mon compte</button><button class="btn ghost" data-open="in">Se connecter</button></div></div>
+<div class="acts"><button class="btn" data-open="up">Créer mon compte</button><button class="btn ghost" data-open="in">Se connecter</button><a class="btn ghost" href="#offers" style="text-decoration:none">Voir les offres</a></div></div>
+<div class="sec" id="offers"><h2>Offres du moment</h2><p class="muted" style="margin:0 0 10px">Parcours librement. Un compte est demandé seulement pour commander.</p><div id="pubo"></div></div>
 <div class="sec" id="how"><h2>Comment ça marche</h2>
 <div class="card step"><span class="num">1</span><div><b>Le vendeur publie</b><div class="muted">Agriculteur, éleveur, pêcheur ou commerçant : produit, quantité, prix et lieu.</div></div></div>
 <div class="card step"><span class="num">2</span><div><b>L’acheteur commande</b><div class="muted">Le prix total, transport compris, est calculé automatiquement. Annulation possible avant l’expédition.</div></div></div>
@@ -222,17 +223,13 @@ async function show(){
   $("auth").classList.toggle("hidden", !!ses);
   $("home").classList.toggle("hidden", !ses);
   $("out").classList.toggle("hidden", !ses);
-  if (!ses) return;
+  if (!ses) { ME = null; await loadRef(); refreshPublic(); return; }
   var p = await sb.from("profiles").select("*").eq("id", ses.user.id).single();
   if (recovering) return;
   if (p.error || !p.data) { $("view").replaceChildren(h("p", {class: "msg err"}, "Profil introuvable (" + (p.error ? p.error.message : "aucune ligne") + "). Déconnecte-toi puis reconnecte-toi.")); return; }
   if (p.data.status === "blocked") { await sb.auth.signOut(); await show(); say($("m"), "Ce compte est suspendu. Contacte le support.", "err"); return; }
   ME = p.data;
-  if (!SET) {
-    var x = await Promise.all([sb.from("settings").select("*").eq("id", 1).single(), sb.from("departments").select("*"), sb.from("communes").select("*").limit(1000)]);
-    SET = x[0].data || {transport_base: 2000, transport_per_unit: 15, sale_commission: .05, transport_commission: .1};
-    DEP = x[1].data || []; COM = x[2].data || [];
-  }
+  await loadRef();
   $("hi").textContent = "Bonjour " + (ME.full_name || "");
   $("rl").textContent = ROLES[ME.role] + (ME.is_admin ? " · Administrateur" : "");
   var items = [["offers", "Offres"]];
@@ -262,12 +259,12 @@ function geo(v){
 var place = function(x){ return [x.commune, x.department, x.region].filter(Boolean).join(", "); };
 
 /* Offres + commande avec prix automatique */
-async function vOffers(){
+function offersUI(){
   var box = h("div"), list = h("div"), fl = h("select", {}, [h("option", {value: ""}, "Toutes les régions")].concat(REG.map(opt)));
-  box.append(lab("Filtrer par région", fl), list); V(box);
+  box.append(lab("Filtrer par région", fl), list);
   async function load(){
     list.replaceChildren(h("p", {class: "muted"}, "Chargement…"));
-    var q = sb.from("listings").select("*").eq("active", true).gt("quantity", 0).order("created_at", {ascending: false}).limit(50);
+    var q = sb.from("listings").select(ME ? "*" : "id,title,category,unit,quantity,unit_price,region,department,commune,created_at").eq("active", true).gt("quantity", 0).order("created_at", {ascending: false}).limit(50);
     if (fl.value) q = q.eq("region", fl.value);
     var r = await q;
     if (r.error) { list.replaceChildren(h("p", {class: "msg err"}, err(r.error))); return; }
@@ -277,9 +274,10 @@ async function vOffers(){
   function card(l){
     var q = h("input", {type: "number", min: "1", max: String(l.quantity), value: "1", step: "any", "aria-label": "Quantité"}),
         pr = h("input", {placeholder: "Code promo (facultatif)", maxlength: "20"}), est = h("div", {class: "muted"}), m = h("div", {class: "msg"}), b = h("button", {class: "btn"}, "Commander");
-    function upd(){ var n = +q.value || 0, sub = n * l.unit_price, fee = SET.transport_base + n * SET.transport_per_unit; est.textContent = "Produits " + fmt(sub) + " + transport " + fmt(fee) + " = " + fmt(sub + fee) + " (le code promo est appliqué à la commande)"; }
+    function upd(){ var n = +q.value || 0, sub = n * l.unit_price; if (!ME) { est.textContent = "Produits " + fmt(sub) + " · le transport est calculé à la commande"; return; } var fee = SET.transport_base + n * SET.transport_per_unit; est.textContent = "Produits " + fmt(sub) + " + transport " + fmt(fee) + " = " + fmt(sub + fee) + " (le code promo est appliqué à la commande)"; }
     q.oninput = upd; upd();
     b.onclick = async function(){
+      if (!ME) { say(m, "Pour commander, crée un compte ou connecte-toi.", "err"); openAuth("up"); return; }
       if (l.seller_id === ME.id) { say(m, "C’est ta propre offre.", "err"); return; }
       b.disabled = true;
       var r = await sb.rpc("create_order", {p_listing: l.id, p_qty: +q.value, p_promo: pr.value.trim() || null});
@@ -288,8 +286,9 @@ async function vOffers(){
     };
     return h("div", {class: "card"}, h("h3", {style: "margin-top:0"}, l.title), h("div", {class: "muted"}, fmt(l.unit_price) + " / " + l.unit + " · " + l.quantity + " " + l.unit + " disponibles"), h("div", {class: "muted"}, place(l)), h("div", {style: "display:grid;gap:8px;margin-top:10px"}, lab("Quantité (" + l.unit + ")", q), pr, est, b), m);
   }
-  fl.onchange = load; load();
+  fl.onchange = load; load(); return box;
 }
+function vOffers(){ V(offersUI()); }
 
 /* Vendre */
 async function vSell(){
@@ -436,6 +435,13 @@ async function vAdmin(){
     if (r.error) say(cm, err(r.error), "err"); else { COM.push({region: d.region, department: d.department, name: d.name}); say(cm, "Commune ajoutée.", "ok"); }
   };
 }
+async function loadRef(){
+  if (SET) return;
+  var x = await Promise.all([sb.from("settings").select("*").eq("id", 1).maybeSingle(), sb.from("departments").select("*"), sb.from("communes").select("*").limit(1000)]);
+  SET = x[0].data || {transport_base: 2000, transport_per_unit: 15, sale_commission: .05, transport_commission: .1};
+  DEP = x[1].data || []; COM = x[2].data || [];
+}
+function refreshPublic(){ if (!ME) $("pubo").replaceChildren(offersUI()); }
 REG.forEach(function(r){ $("zl").append(h("span", {class: "chip"}, r)); });
 function closeM(){ $("drawer").classList.add("hidden"); $("ov").classList.add("hidden"); $("mbtn").setAttribute("aria-expanded", "false"); }
 function toTop(){ window.scrollTo({top: 0, behavior: "smooth"}); }
@@ -452,7 +458,7 @@ function openM(){
     if (ME.is_admin) items.push(it("Administration", function(){ toTop(); go("admin"); }));
     items.push(it("Déconnexion", function(){ $("out").click(); }));
   } else {
-    items.push(it("Accueil", toTop), it("Comment ça marche", function(){ toId("how"); }), it("Pour qui ?", function(){ toId("who"); }), it("Régions", function(){ toId("zones"); }), it("Se connecter", function(){ openAuth("in"); }), it("Créer un compte", function(){ openAuth("up"); }));
+    items.push(it("Accueil", toTop), it("Offres", function(){ toId("offers"); }), it("Comment ça marche", function(){ toId("how"); }), it("Pour qui ?", function(){ toId("who"); }), it("Régions", function(){ toId("zones"); }), it("Se connecter", function(){ openAuth("in"); }), it("Créer un compte", function(){ openAuth("up"); }));
   }
   d.replaceChildren.apply(d, items);
   d.classList.remove("hidden"); $("ov").classList.remove("hidden"); $("mbtn").setAttribute("aria-expanded", "true");
