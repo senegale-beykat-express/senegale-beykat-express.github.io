@@ -47,6 +47,12 @@ header{gap:10px}.logo{flex:1}
 .num{width:36px;height:36px;border-radius:50%;background:var(--leaf);color:var(--leaf-ink);display:grid;place-items:center;font-weight:800}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.chip{padding:6px 12px;border-radius:20px;border:1.5px solid var(--line);font-size:14px}
 .sec{padding:22px 0 4px}.sec h2{font-size:clamp(22px,6vw,30px);margin-bottom:12px}
+.chatbox{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.chat{max-height:260px;overflow-y:auto;display:grid;gap:6px;margin-bottom:8px}
+.bub{padding:8px 12px;border-radius:12px;background:var(--bg);max-width:85%;justify-self:start;word-break:break-word}
+.bub.me{background:var(--leaf);color:var(--leaf-ink);justify-self:end}
+.bub small{display:block;opacity:.7;font-size:11px;margin-top:2px}
+.cr{display:flex;gap:8px}.cr input{flex:1}
 </style>
 </head>
 <body>
@@ -240,7 +246,7 @@ async function show(){
   go(items.some(function(i){ return i[0] === tab; }) ? tab : "offers");
 }
 function go(t){
-  tab = t;
+  stopChat(); tab = t;
   document.querySelectorAll("#nav .tab").forEach(function(b){ b.setAttribute("aria-selected", b.dataset.t === t); });
   ({offers: vOffers, sell: vSell, orders: vOrders, me: vMe, admin: vAdmin})[t]();
 }
@@ -317,9 +323,39 @@ async function vSell(){
   loadMine();
 }
 
+/* Discussion liée à une commande */
+var CHAT_T = null, CUR = null;
+function stopChat(){ if (CHAT_T) clearInterval(CHAT_T); CHAT_T = null; if (CUR) CUR.replaceChildren(); CUR = null; }
+function chatUI(o){
+  var list = h("div", {class: "chat", "aria-live": "polite"}), inp = h("input", {maxlength: "1000", placeholder: "Écris ton message…", "aria-label": "Message", autocomplete: "off"}),
+      b = h("button", {class: "btn"}, "Envoyer"), m = h("div", {class: "msg"}), last = null;
+  var box = h("div", {class: "chatbox"}, list, h("div", {class: "cr"}, inp, b), m,
+    h("div", {class: "muted"}, "Pour ta sécurité : ne partage jamais de mot de passe ni de code reçu par SMS, et paie seulement via la plateforme."));
+  async function load(){
+    var r = await sb.from("messages").select("id,sender_id,body,created_at").eq("order_id", o.id).order("created_at", {ascending: true}).limit(200);
+    if (r.error) { say(m, err(r.error), "err"); return; }
+    var sig = r.data.map(function(x){ return x.id; }).join(",");
+    if (sig === last) return; last = sig;
+    list.replaceChildren.apply(list, r.data.length ? r.data.map(function(x){
+      return h("div", {class: "bub" + (x.sender_id === ME.id ? " me" : "")}, h("div", {}, x.body), h("small", {}, new Date(x.created_at).toLocaleString("fr-FR", {day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"})));
+    }) : [h("p", {class: "muted"}, "Aucun message. Écris le premier.")]);
+    list.scrollTop = list.scrollHeight;
+  }
+  async function send(){
+    var t = inp.value.trim(); if (!t) return;
+    b.disabled = true;
+    var r = await sb.from("messages").insert({order_id: o.id, body: t});
+    b.disabled = false;
+    if (r.error) say(m, err(r.error), "err"); else { inp.value = ""; say(m, ""); load(); }
+  }
+  b.onclick = send; inp.onkeydown = function(e){ if (e.key === "Enter") send(); };
+  load();
+  return {el: box, load: load};
+}
+
 /* Commandes : suivi, annulation */
 async function vOrders(){
-  var box = h("div"); V(box);
+  stopChat(); var box = h("div"); V(box);
   var r = await sb.from("orders").select("*, listings(title,unit)").order("created_at", {ascending: false}).limit(50);
   if (r.error) { box.append(h("p", {class: "msg err"}, err(r.error))); return; }
   if (!r.data.length) { box.append(h("p", {class: "muted"}, "Aucune commande.")); return; }
@@ -330,7 +366,16 @@ async function vOrders(){
   var NM = {}, PH = {};
   (pn.data || []).forEach(function(x){ NM[x.id] = x.full_name; }); (ph.data || []).forEach(function(x){ PH[x.user_id] = x.phone; });
   r.data.forEach(function(o){
-    var m = h("div", {class: "msg"}), acts = h("div", {class: "acts"}), contact = null;
+    var m = h("div", {class: "msg"}), acts = h("div", {class: "acts"}), contact = null, chatBox = h("div");
+    if (o._other) {
+      var cb = h("button", {class: "btn ghost"}, "Discuter");
+      cb.onclick = function(){
+        if (CUR === chatBox) { stopChat(); return; }
+        stopChat();
+        var c = chatUI(o); chatBox.replaceChildren(c.el); CUR = chatBox; CHAT_T = setInterval(c.load, 5000);
+      };
+      acts.append(cb);
+    }
     if (o._other) {
       var live = ["confirmed", "in_transit", "delivered"].indexOf(o.status) >= 0;
       var tel = live ? (PH[o._other] ? h("a", {href: "tel:" + PH[o._other].replace(/\s/g, "")}, PH[o._other]) : "non renseigné") : "visible après confirmation";
@@ -345,7 +390,7 @@ async function vOrders(){
       if (o.status === "in_transit") act("Marquer livrée", setS("delivered"), "warn");
     }
     box.append(h("div", {class: "card"}, h("b", {}, ((o.listings && o.listings.title) || "Offre") + " × " + o.quantity), h("div", {class: "muted"}, (o.buyer_id === ME.id ? "Achat" : "Vente") + " · " + new Date(o.created_at).toLocaleDateString("fr-FR")), contact,
-      h("div", {}, "Produits " + fmt(o.subtotal) + (o.discount > 0 ? " − réduction " + fmt(o.discount) : "") + " + transport " + fmt(o.transport_fee)), h("b", {}, "Total " + fmt(o.total)), h("div", {}, h("span", {class: "tag"}, ST[o.status])), acts, m));
+      h("div", {}, "Produits " + fmt(o.subtotal) + (o.discount > 0 ? " − réduction " + fmt(o.discount) : "") + " + transport " + fmt(o.transport_fee)), h("b", {}, "Total " + fmt(o.total)), h("div", {}, h("span", {class: "tag"}, ST[o.status])), acts, chatBox, m));
   });
 }
 
